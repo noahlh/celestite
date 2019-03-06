@@ -17,7 +17,7 @@ const VUE_CLIENT_BUILD_DIR_PUBLIC_PATH = process.env.VUE_CLIENT_BUILD_DIR_PUBLIC
 const NODE_ENV = process.env.NODE_ENV || "development"
 
 // If we're doing templates (aka layouts), synchronously load them into an in-memory array.  
-// Since templates are almost always going to be super lightweight, for now synch + in-memory is fine.
+// Since templates are almost always going to be super lightweight, for now sync + in-memory is fine.
 const templateFiles = []
 
 if (VUE_TEMPLATE_DIR) {
@@ -38,6 +38,8 @@ const http = require('http')
 const port = process.env.NODE_PORT || 4000
 const webpack = require('webpack')
 const merge = require('webpack-merge')
+const webpackDevMiddleware = require('webpack-dev-middleware')
+const webpackHotMiddleware = require('webpack-hot-middleware')
 const webpackServerConfig = require('../../config/webpack/webpack-vue-server-cfg.js')
 const webpackClientConfig = require('../../config/webpack/webpack-vue-client-cfg.js')
 
@@ -55,6 +57,16 @@ const webpackCommonVariableConfig = {
   }
 }
 
+// Modify client config for hot reloading in dev
+// if (NODE_ENV == 'development') {
+//   webpackClientConfig.entry.client = ['webpack-hot-middleware/client', webpackClientConfig.entry.client]
+//   webpackClientConfig.output.filename = '[name].js'
+//   webpackClientConfig.plugins.push(
+//     new webpack.HotModuleReplacementPlugin(),
+//     new webpack.NoEmitOnErrorsPlugin()
+//   )
+// }
+
 const webpackCompiler = webpack([
   merge(webpackCommonVariableConfig, webpackClientConfig),
   merge(webpackCommonVariableConfig, webpackServerConfig)
@@ -66,7 +78,7 @@ const webpackCompiler = webpack([
 const doRender = (serverBundle, clientManifest) => {
   return (req, res) => {
 
-    // We're using the WHATWG URL standard since it's a mostly-standard, but that bind us to Node 8+
+    // We're using the WHATWG URL standard since it's a mostly-standard, but that binds us to Node 8+
     let url = new URL(`http://localhost:${port}${req.url}`)
     let pathname = url.pathname
     let templateRequested = url.searchParams.get('template')
@@ -175,7 +187,7 @@ const webpackCompileCallback = (err, stats) => {
   // so we do this with a symlink.  This feels hack-y, but for now it'll have to do.
 
   try {
-    fs.symlinkSync(path.resolve(VUE_SSR_BUILD_DIR, 'cvue.main.js'), path.resolve(VUE_CLIENT_BUILD_DIR, 'cvue.main.js'))
+    fs.symlinkSync(path.resolve(VUE_SSR_BUILD_DIR, 'cvue.client.js'), path.resolve(VUE_CLIENT_BUILD_DIR, 'cvue.client.js'))
   } catch (e) {
     if (e.code == 'EEXIST') {
       console.log('[node] Symlink already exists - moving on...')

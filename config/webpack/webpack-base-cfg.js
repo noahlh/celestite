@@ -13,14 +13,18 @@ module.exports = {
   module: {
     rules: [{
         test: /\.vue$/,
-        loader: 'vue-loader',
+        use: {
+          loader: 'vue-loader',
+        }
       },
       {
         test: /\.js$/,
         exclude: /node_modules/,
-        loader: 'babel-loader',
-        query: {
-          presets: ['env']
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['env']
+          }
         }
       },
       {
@@ -34,16 +38,26 @@ module.exports = {
       {
         test: /\.(png|svg|jpg|gif)$/,
         exclude: /node_modules/,
-        use: [
-          'file-loader?name=/images/[name].[ext]'
-        ]
+        use: [{
+          loader: 'file-loader',
+          options: {
+            name: '[name]-[hash:8].[ext]',
+            outputPath: 'images',
+            publicPath: 'assets/dist/images'
+          }
+        }]
       },
       {
         test: /\.(woff|woff2|eot|ttf|otf)$/,
         exclude: /node_modules/,
-        use: [
-          'file-loader?name=/[name].[ext]'
-        ]
+        use: [{
+          loader: 'file-loader',
+          options: {
+            name: '[name]-[hash:8].[ext]',
+            outputPath: 'fonts',
+            publicPath: 'assets/dist/fonts'
+          }
+        }]
       },
     ]
   },

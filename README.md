@@ -333,9 +333,9 @@ Huzzah!  Server-rendered initial view, reactive (hydrated) elements after load, 
 
 * Crystal 0.27
 * Yarn 1.12+
-* Node 10.9+
+* Node 10+
 
-The render server was built using node 10.9.X (in particular it uses the WHATWG URL Standard, which was added in Node 7+.)  It doesn't need to do this, strictly-speaking, and if there's a compelling reason to support earlier versions of node I'm happy to make this change.)
+The render server was built using node 10.15.3 (in particular it uses the WHATWG URL Standard, which was added in Node 7+.)  It doesn't need to do this, strictly-speaking, and if there's a compelling reason to support earlier versions of node I'm happy to make this change.)
 
 ## Installation
 

@@ -66,12 +66,11 @@ module CrystalVue
         str << "VUE_CLIENT_BUILD_DIR_PUBLIC_PATH=#{build_dir_public_path} " if build_dir_public_path
 
         if ENV["CRYSTAL_VUE"] == "development"
-          str << "npx nodemon -e \"json js\" "
-          str << "--watch #{template_dir} " if template_dir
+          str << "yarn --cwd #{__DIR__}/../../ run dev -e \"json js\" "
+          str << "--watch #{template_dir}" if template_dir
         else
-          str << "node "
+          str << "yarn --cwd #{__DIR__}/../../ run prod"
         end
-        str << "#{__DIR__}/../server/render-server.js"
       end
 
       @logger.info("Starting node with command: #{process_command}")
