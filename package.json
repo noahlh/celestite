@@ -5,9 +5,10 @@
   "author": "Noah Lehmann-Haupt <nlh@nlh.me>",
   "license": "MIT",
   "scripts": {
-    "build": "npx babel src/server -d build",
-    "dev": "npx nodemon --exec babel-node -d build src/server/render-server.js",
-    "prod": "yarn build && node build/render-server.js"
+    "build": "npx babel src/server -d build/server",
+    "dev": "npx nodemon --exec babel-node -d build/server src/server/render-server.js",
+    "prod": "node build/server/render-server.js",
+    "preprod": "yarn build"
   },
   "dependencies": {
     "babel-cli": "^6.26.0",

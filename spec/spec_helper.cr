@@ -3,6 +3,10 @@ require "../src/crystal-vue"
 
 ENV["CRYSTAL_VUE"] = "test"
 
+def get_logger
+  Logger.new(STDOUT)
+end
+
 def run_spec_server(renderer, timeout = 5.seconds)
   channel = Channel(Process).new
 

@@ -40,7 +40,7 @@ describe CrystalVue do
         routes_file: "#{__DIR__}/scripts/routes.js",
         component_dir: "#{__DIR__}/scripts"
       )
-      sleep 3
+      sleep 5
       r = CrystalVue.render("/")
       r.should eq("<div id=\"crystal-vue-app\" data-server-rendered=\"true\"><div>Test!</div></div>")
     ensure
@@ -53,7 +53,7 @@ describe CrystalVue do
         template_dir: "#{__DIR__}/scripts",
         default_template: "test.html"
       )
-      sleep 3
+      sleep 5
       r = CrystalVue.render("/")
       r.should contain("<html>\n\n") if r
     end
