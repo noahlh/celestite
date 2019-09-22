@@ -1,10 +1,10 @@
 {
   "presets": [
     [
-      "env",
+      "./node_modules/babel-preset-env",
       {
         "targets": {
-          "node": "10.15.3"
+          "node": true
         }
       }
     ]
