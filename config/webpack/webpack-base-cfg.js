@@ -1,12 +1,13 @@
 const path = require("path");
+const fs = require("fs");
 const VueLoaderPlugin = require("vue-loader/lib/plugin");
-const babelPresetEnv = require("babel-preset-env");
 
 module.exports = {
   resolve: {
     alias: {
       scripts: path.resolve(__dirname, "../../src/scripts/")
-    }
+    },
+    modules: [path.resolve(__dirname, "../../node_modules")]
   },
   resolveLoader: {
     modules: [path.resolve(__dirname, "../../node_modules")]
@@ -25,7 +26,7 @@ module.exports = {
         use: {
           loader: "babel-loader",
           options: {
-            presets: [babelPresetEnv]
+            rootMode: "upward"
           }
         }
       },
