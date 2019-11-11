@@ -1,12 +1,12 @@
 name: crystal-vue
 version: 0.1.0
 
-scripts: 
+scripts:
   postinstall: yarn install
 
 authors:
   - Noah Lehmann-Haupt <nlh@noahlh.com>
 
-crystal: 0.27
+crystal: 0.31.1
 
 license: MIT
