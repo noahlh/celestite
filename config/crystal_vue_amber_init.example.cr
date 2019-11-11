@@ -38,9 +38,9 @@ CrystalVue.init(
   # build_dir - optional (but basically required if you want client-side JavaScript to work);  Where the crystal-vue
   # webpack process should output the client-side javascript bundle build.  This file will be called by browsers
   # directly, so it should live where your other static files live. For now this will be a symbolic link.
-  build_dir: "#{Dir.current}/public/dist",
+  build_dir: "#{Dir.current}/public/crystal-vue-js/",
 
   # build_dir_public_path - related to above, this is the relative directory the browser should reference for the
   # client js build file.
-  build_dir_public_path: "/dist"
+  build_dir_public_path: "crystal-vue-js/"
 )
