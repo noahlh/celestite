@@ -1,4 +1,4 @@
-name: Crystal CI
+name: crystal spec
 
 on: [push]
 
