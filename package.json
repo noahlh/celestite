@@ -1,26 +1,21 @@
 {
-  "name": "crystal-vue",
-  "version": "0.1.1",
+  "name": "celestite",
+  "version": "0.1.2",
   "repository": "https://github.com/noahlh/crystal-vue",
   "author": "Noah Lehmann-Haupt <nlh@nlh.me>",
   "license": "MIT",
-  "scripts": {
-    "build": "rm -rf build/ && npx babel src/server -d build/server",
-    "dev": "NODE_ENV=development npx nodemon --exec node build/server/render-server.js",
-    "prod": "NODE_ENV=production node build/server/render-server.js",
-    "predev": "yarn build",
-    "preprod": "yarn build"
-  },
   "dependencies": {
     "@babel/cli": "^7.6.2",
     "@babel/core": "^7.6.2",
     "@babel/preset-env": "^7.6.2",
     "babel-loader": "^8.0.6",
     "babel-plugin-module-resolver": "^3.2.0",
+    "body-parser": "^1.19.0",
     "css-loader": "^2.0.1",
     "express": "^4.17.1",
     "node-sass": "^4.13.0",
     "nodemon": "^1.19.2",
+    "polka": "next",
     "sass-loader": "^8.0.0",
     "vue": "^2.5.21",
     "vue-loader": "^15.4.2",
@@ -36,5 +31,10 @@
     "webpack-manifest-plugin": "^2.0.4",
     "webpack-merge": "^4.1.5",
     "webpack-node-externals": "^1.7.2"
+  },
+  "devDependencies": {
+    "sapper": "github:noahlh/sapper#development",
+    "svelte": "^3.0.0",
+    "svelte-loader": "^2.9.0"
   }
 }

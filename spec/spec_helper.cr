@@ -1,32 +1,35 @@
 require "spec"
-require "../src/crystal-vue"
+require "../src/celestite"
 
-ENV["CRYSTAL_VUE"] = "test"
+ENV["CELESTITE"] = "test"
 
 def get_logger
   Logger.new(STDOUT)
 end
 
-def run_spec_server(renderer, timeout = 10.seconds)
+def run_spec_server(renderer, timeout = 10.seconds, output : IO? = IO::Memory.new)
   channel = Channel(Process).new
 
   IO.pipe do |reader, writer|
-    # multi = IO::MultiWriter.new(STDOUT, writer) # # uncomment for debugging
+    multi = IO::MultiWriter.new(output, writer)
     now = Time.monotonic
-    # renderer.logger = Logger.new(multi) # uncomment for debugging
-    renderer.logger = Logger.new(writer)
+    renderer.logger = Logger.new(multi)
     spawn do
-      proc = renderer.start_server
-      channel.send(proc)
+      begin
+        proc = renderer.start_server
+        channel.send(proc)
+      rescue
+        renderer.logger.error("Renderer failed to start.")
+      end
     end
 
     begin
       proc = channel.receive
       loop do
         # break if reader.gets =~ /SSR renderer listening/
-        break if reader.gets =~ /Webpack compilation complete/
+        break if reader.gets =~ (/SSR renderer listening/)
         raise "Node server failed to start within timeout" if ((Time.monotonic - now) > timeout)
-        raise "Node server terminated due to fault" if proc.terminated?
+        raise "Node server failed" if proc.terminated?
         sleep 0.1
       end
       yield
