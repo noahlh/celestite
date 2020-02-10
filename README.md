@@ -114,11 +114,11 @@ h1 {
 
 Et voila:
 
-<img src="doc/crystal-vue-example-1.png" width=522/>
+<img src="doc/celestite-example-1.png" width=522/>
 
 Ok that's not so exciting. And it's a bit more verbose. But there's more to this, I promise! The key is that number 2 is not just a static ASCII character loaded via HTML -- it's actually a fully reactive element of a live Vue component:
 
-<img src="doc/crystal-vue-example-2a.png" width=522/>
+<img src="doc/celestite-example-2a.png" width=522/>
 
 A quick peek at the raw HTML shows our server's doing all the hard work (which is what servers were designed to do) and sending us a fully rendered page that, even if it were more complex, would load quickly and be SEO-friendly:
 
@@ -218,7 +218,7 @@ Or the Svelte equivalent:
 
 Gives us, as expected:
 
-<img src="doc/crystal-vue-example-2.png" width=522/>
+<img src="doc/celestite-example-2.png" width=522/>
 
 And again, this is all being done server-side, the raw HTML tells the same story:
 
@@ -308,7 +308,7 @@ Or the equivalent in Svelte:
 
 And we see:
 
-<img src="doc/crystal-vue-example-3.png" width=522/>
+<img src="doc/celestite-example-3.png" width=522/>
 
 All looking good. Same with the raw HTML:
 
@@ -383,7 +383,7 @@ When a request comes in, the server will render the component and send down the 
 
 In your browser, the javascript bundle (along with Vue) will load and automatically understand that this is server-rendered Vue code. It then "hydrates" the static element and makes it dynamic, as such:
 
-<img src="doc/crystal-vue-example-4.gif" width=522/>
+<img src="doc/celestite-example-4.gif" width=522/>
 
 Huzzah! Server-rendered initial view, reactive (hydrated) elements after load, and a rich dynamic (sort of) UI for the user, and all in a single piece of view code. Heaven.
 
