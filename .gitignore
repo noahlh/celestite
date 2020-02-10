@@ -1,17 +1,17 @@
-/build/
-/docs/
+/src/vue-scripts/build/
+/src/vue-scripts/server-build/
+/src/svelte-scripts/__sapper__
+/src/svelte-scripts/node_modules/
 /lib/
 /bin/
 /.shards/
 *.dwarf
 *.sublime-project
 *.sublime-workspace
-crystal-vue.sublime-project
-crystal-vue.sublime-workspace
 
 # Libraries don't need dependency lock
 /shard.lock
-yarn.lock
+package-lock.json
 
 # node / yarn-related files
 /node_modules/
