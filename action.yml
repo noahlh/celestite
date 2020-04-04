@@ -1,0 +1,5 @@
+name: "celestite spec run"
+description: "Runs all specs for celestite"
+runs:
+  using: "docker"
+  image: "Dockerfile"

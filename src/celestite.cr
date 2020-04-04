@@ -15,7 +15,7 @@ module Celestite
   @@default_template : String?
 
   # CrystalVue.initialize does the full range of initialization (launches all processes) to get the renderer going
-  def self.initialize(engine : Celestite::Engine, component_dir, routes_file = nil, logger = Logger.new(nil), port = 4000, template_dir = nil, @@default_template = nil, build_dir = nil, build_dir_public_path = nil)
+  def self.initialize(engine : Celestite::Engine, component_dir, routes_file = nil, logger = Logger.new(nil), port = 4000, template_dir = nil, @@default_template = nil, build_dir = nil, build_dir_public_path = nil) : Renderer
     @@logger = logger
     if engine == Celestite::Engine::Vue
       renderer = Celestite::Renderer::Vue.new(component_dir: component_dir, routes_file: routes_file, logger: logger, port: port, template_dir: template_dir, default_template: @@default_template, build_dir: build_dir, build_dir_public_path: build_dir_public_path)
@@ -26,6 +26,7 @@ module Celestite
     end
     @@node_processes << renderer.start_server
     @@renderer = renderer if renderer
+    return renderer || Renderer::Generic.new
   end
 
   # This exposes the render class on the module, in cases (i.e. Amber) where you can't easily pass around the render instance.
@@ -43,41 +44,45 @@ module Celestite
     @@renderer
   end
 
-  # Clean up after ourselves and nuke any spun up node processe
-  def self.kill_process_tree(pid : Int)
-    begin
-      io = IO::Memory.new
-      # If pgrep is successful that this process has children
-      if Process.run("pgrep", args: ["-P #{pid}"], output: io).success?
-        child_pids = io.to_s.split
-        child_pids.each do |child_pid|
-          self.kill_process_tree(child_pid.to_i)
-        end
-      end
-      # No more children, so start killing from the bottom up
-      @@logger.info("Nuking child process #{pid}")
-      Process.kill(Signal::TERM, pid.to_i)
-    rescue ex
-    end
-  end
+  # # Clean up after ourselves and nuke any spun up node processe
+  # def self.kill_process_tree(pid : Int)
+  #   begin
+  #     io = IO::Memory.new
+  #     # If pgrep is successful that this process has children
+  #     if Process.run("pgrep", args: ["-P #{pid}"], output: io).success?
+  #       child_pids = io.to_s.split
+  #       child_pids.each do |child_pid|
+  #         self.kill_process_tree(child_pid.to_i)
+  #       end
+  #     end
+  #     # No more children, so start killing from the bottom up
+  #     @@logger.info("Nuking child process #{pid}")
+  #     Process.kill(Signal::TERM, pid.to_i)
+  #   rescue ex
+  #   end
+  # end
 
-  def self.kill_processes
-    if @@node_processes.size > 0
-      @@node_processes.each do |process|
-        @@logger.info("Nuking node process #{process.pid}")
-        self.kill_process_tree(process.pid)
-      end
-      @@node_processes.clear
-    end
-  end
+  # def self.kill_processes
+  #   if @@node_processes.size > 0
+  #     @@node_processes.each do |process|
+  #       @@logger.info("Nuking node process #{process.pid}")
+  #       self.kill_process_tree(process.pid)
+  #     end
+  #     @@node_processes.clear
+  #   end
+  # end
 
   # Kill off the node processes when the program exits or receives a SIGTERM (i.e. Amber watch restart)
   at_exit do
-    self.kill_processes
+    if renderer = self.renderer
+      renderer.kill_server
+    end
   end
 
   Signal::TERM.trap do
-    self.kill_processes
-    exit
+    if renderer = self.renderer
+      renderer.kill_server
+      exit
+    end
   end
 end

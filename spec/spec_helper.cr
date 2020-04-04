@@ -7,7 +7,7 @@ def get_logger
   Logger.new(STDOUT)
 end
 
-def run_spec_server(renderer, timeout = 10.seconds, output : IO? = IO::Memory.new)
+def run_spec_server(renderer, timeout = 20.seconds, output : IO? = IO::Memory.new)
   channel = Channel(Process).new
 
   IO.pipe do |reader, writer|

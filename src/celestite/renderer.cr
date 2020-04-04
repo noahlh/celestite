@@ -92,9 +92,28 @@ module Celestite
       return node_process
     end
 
+    def kill_process_tree(pid : Int)
+      begin
+        io = IO::Memory.new
+        # If pgrep is successful that this process has children
+        if Process.run("pgrep", shell: false, args: ["-P", "#{pid}"], output: io).success?
+          child_pids = io.to_s.split
+          child_pids.each do |child_pid|
+            kill_process_tree(child_pid.to_i)
+          end
+        end
+        # No more children, so start killing from the bottom up
+        @logger.info("Nuking child process #{pid}")
+        Process.kill(Signal::TERM, pid.to_i)
+      rescue ex
+      end
+    end
+
     def kill_server
-      proc = @node_process
-      proc.kill if (proc && !proc.terminated?)
+      if node_process = @node_process
+        @logger.info("Nuking node process #{node_process.pid}")
+        kill_process_tree(node_process.pid)
+      end
     end
 
     def render(path : String?, context : Celestite::Context? = nil, template : String? = @default_template)
