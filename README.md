@@ -1,5 +1,7 @@
 **Note: This project was previously called "crystal-vue", but I just added support for Svelte, so, well, that name doesn't really work anymore :)**
 
+![](https://github.com/noahlh/celestite/workflows/crystal%20spec/badge.svg?branch=master)
+
 # celestite
 
 <img src="https://crystal-lang.org/assets/media/crystal_icon.svg?sanitize=1" height=21> Crystal + (<img src="https://vuejs.org/images/logo.png" height=16> Vue.js | <img src="https://upload.wikimedia.org/wikipedia/commons/1/1b/Svelte_Logo.svg" height=16> Svelte) = :zap: :zap:
