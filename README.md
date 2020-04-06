@@ -515,7 +515,11 @@ This is because of a slight hitch with how Sapper works behind the scenes, but e
 
 ### And finally...
 
-**4) Add your `.vue` or `.svelte` files to your components directory and start building**
+**4) Add your `.vue` or `.svelte` files and start building**
+
+A note on naming: When using Svelte, make sure you follow Sapper's [file naming rules](https://sapper.svelte.dev/docs#File_naming_rules). Hint: the root component should be named `index.svelte` (all lowercase).
+
+When using Vue, you've got a bit more flexibility on how your components are named, since you provide a map to them in the routes.js file. Vue's convention would be to name your root component `Index.vue`.
 
 ## Usage Details
 
