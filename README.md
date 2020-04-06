@@ -444,7 +444,7 @@ This adds the `celestite_render` macro and sets up the `@vue_context` and `@sapp
 
   class ApplicationController < Amber::Controller::Base
     include JasperHelpers
-+   include CrystalVue::Adapter::Amber
++   include Celestite::Adapter::Amber
   end
 ```
 
@@ -466,7 +466,7 @@ This should export an array of path/component mappings, for example:
 export default [
   { path: "/", component: "home/Index" },
   { path: "/about", component: "static/About" },
-  { path: "/user/:userid", component: "users/User" }
+  { path: "/user/:userid", component: "users/User" },
 ];
 ```
 
