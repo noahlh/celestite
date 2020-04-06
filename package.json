@@ -1,7 +1,7 @@
 {
   "name": "celestite",
   "version": "0.1.2",
-  "repository": "https://github.com/noahlh/crystal-vue",
+  "repository": "https://github.com/noahlh/celestite",
   "author": "Noah Lehmann-Haupt <nlh@nlh.me>",
   "license": "MIT",
   "dependencies": {
