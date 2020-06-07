@@ -10,7 +10,7 @@ celestite_logger.color = :green
 
 # The main init...
 
-Celestite.init(
+Celestite.initialize(
 
   # #
   # # First, choose your engine.
