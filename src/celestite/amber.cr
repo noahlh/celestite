@@ -6,8 +6,8 @@ module Celestite
         # But in Vue it's called a context and in Svelte/Sapper it's called the session store, 
         # So we'll name them accordingly here for consistency.
         
-        @vue_context = Celestite::Context.new
-        @sapper_session = Celestite::Context.new
+        # @vue_context = Celestite::Context.new
+        # @sapper_session = Celestite::Context.new
       end
 
       macro celestite_render(context = nil, path = nil, template = nil)

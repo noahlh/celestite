@@ -1,7 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    %sapper.base% %sapper.styles% %sapper.head%
+    <meta charset="utf-8" />
+    <!-- Base -->
+    %sapper.base%
+    <!-- Styles & CSS Resets -->
+    <style>
+      html,
+      body,
+      #celestite-app {
+        width: 100%;
+        height: 100%;
+      }
+      p,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      div {
+        box-sizing: border-box;
+      }
+    </style>
+    %sapper.styles%
+    <!-- Head  -->
+    %sapper.head%
   </head>
   <body>
     <div id="celestite-app">%sapper.html%</div>

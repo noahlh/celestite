@@ -118,7 +118,7 @@ module Celestite
 
     def render(path : String?, context : Celestite::Context? = nil, template : String? = @default_template)
       @logger.info "Rendering #{path}"
-      @logger.info "Context: #{context}"
+      @logger.info "Context: #{context.to_json}"
       @logger.info "Template: #{template}"
 
       path_with_query = String.build do |q|

@@ -1,22 +1,26 @@
 // This is the webpack config file that Svelte/Sapper makes use of.
 // Unfortunately it's not (easily) possible to customize the name or location
 // of this file in Sapper, so it has to live here with this name.  Sorry for any confusion.
-// Ideally, it should live in config along with the Vue webpack config files.  We'll get there.
+// Ideally, it should live in the client project directory (so you can customize it per-project).
+// We'll get there.
 
 const webpack = require("webpack");
 const path = require("path");
 const config = require("sapper/config/webpack.js");
 const pkg = require("../../package.json");
-const mode =
-  (process.env.NODE_ENV == "test" ? "production" : process.env.NODE_ENV) ||
-  "development";
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+
+const mode = process.env.NODE_ENV;
 const dev = mode === "development";
+
 const alias = {
   svelte: path.resolve("../../", "node_modules", "svelte"),
-  "@sapper": path.resolve("node_modules", "@sapper")
+  "@sapper": path.resolve("node_modules", "@sapper"),
 };
 const extensions = [".mjs", ".js", ".json", ".svelte", ".html"];
 const mainFields = ["svelte", "module", "browser", "main"];
+
+const sveltePreprocess = require("svelte-preprocess");
 
 module.exports = {
   client: {
@@ -32,11 +36,33 @@ module.exports = {
             options: {
               dev,
               hydratable: true,
-              hotReload: true // pending https://github.com/sveltejs/svelte/issues/2377
-            }
-          }
-        }
-      ]
+              hotReload: false, // pending https://github.com/sveltejs/svelte/issues/2377,
+              emitCss: true,
+              preprocess: sveltePreprocess(),
+            },
+          },
+        },
+        {
+          test: /\.css$/,
+          use: [MiniCssExtractPlugin.loader, "css-loader"],
+        },
+        {
+          test: /\.(png|svg|jpg|gif)$/,
+          loader: "file-loader",
+          options: {
+            name: "[name]-[hash:8].[ext]",
+            publicPath: "/client/",
+          },
+        },
+        {
+          test: /\.(woff|woff2)$/,
+          loader: "file-loader",
+          options: {
+            name: "[name]-[hash:8].[ext]",
+            publicPath: "/client/",
+          },
+        },
+      ],
     },
     mode,
     plugins: [
@@ -44,10 +70,14 @@ module.exports = {
       // dev && new webpack.HotModuleReplacementPlugin(),
       new webpack.DefinePlugin({
         "process.browser": true,
-        "process.env.NODE_ENV": JSON.stringify(mode)
-      })
+        "process.env.NODE_ENV": JSON.stringify(mode),
+      }),
+      new MiniCssExtractPlugin({
+        filename: "[name]-[hash:8].css",
+        chunkFilename: "[id]-[hash:8].css",
+      }),
     ].filter(Boolean),
-    devtool: dev && "inline-source-map"
+    devtool: dev && "inline-source-map",
   },
 
   server: {
@@ -64,16 +94,35 @@ module.exports = {
             loader: "svelte-loader",
             options: {
               css: false,
+              emitCss: false,
               generate: "ssr",
-              dev
-            }
-          }
-        }
-      ]
+              dev,
+            },
+          },
+        },
+        {
+          test: /\.(png|jpe?g|gif)$/i,
+          loader: "file-loader",
+          options: {
+            name: "[name]-[hash:8].[ext]",
+            publicPath: "client/",
+            emitFile: false,
+          },
+        },
+        {
+          test: /\.(woff|woff2)$/i,
+          loader: "file-loader",
+          options: {
+            name: "[name]-[hash:8].[ext]",
+            publicPath: "client/",
+            emitFile: false,
+          },
+        },
+      ],
     },
-    mode,
+    mode: process.env.NODE_ENV,
     performance: {
-      hints: false // it doesn't matter if server.js is large
-    }
-  }
+      hints: false, // it doesn't matter if server.js is large
+    },
+  },
 };

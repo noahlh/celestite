@@ -28,7 +28,7 @@ build: $(SAPPER_BUILD_DIR_TRIMMED)/.make.build
 production test: build
 	NODE_ENV=$(NODE_ENV) NODE_PATH=$(NODE_PATH) node $(SAPPER_BUILD_DIR_TRIMMED)
 
-development: 
+development:
 	$(NODE_PATH)/sapper/sapper dev --no-hot -p $(NODE_PORT) --routes $(SAPPER_ROUTES_TRIMMED) --src $(ROOT_PATH)/src/svelte-scripts/ --output $(SAPPER_OUTPUT) --build-dir $(SAPPER_BUILD_DIR_TRIMMED)
 
 $(SAPPER_BUILD_DIR_TRIMMED)/.make.build: $(SAPPER_SRC_FILES) $(SAPPER_ROUTE_FILES)
