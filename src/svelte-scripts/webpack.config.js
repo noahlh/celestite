@@ -10,7 +10,7 @@ const config = require("sapper/config/webpack.js");
 const pkg = require("../../package.json");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
-const mode = process.env.NODE_ENV;
+const mode = process.env.NODE_ENV === "development" ? "development" : "production";
 const dev = mode === "development";
 
 const alias = {
@@ -122,7 +122,7 @@ module.exports = {
         },
       ],
     },
-    mode: process.env.NODE_ENV,
+    mode,
     performance: {
       hints: false, // it doesn't matter if server.js is large
     },

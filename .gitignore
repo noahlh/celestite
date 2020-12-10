@@ -1,5 +1,3 @@
-/src/vue-scripts/build/
-/src/vue-scripts/server-build/
 /src/svelte-scripts/__sapper__/
 /src/svelte-scripts/node_modules/
 /src/svelte-scripts/node_modules/@sapper

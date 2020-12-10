@@ -1,10 +1,8 @@
 module Celestite
   enum Engine
-    Vue
     Svelte
 
     @@dirs = {
-      Vue    => "vue-scripts",
       Svelte => "svelte-scripts",
     }
 

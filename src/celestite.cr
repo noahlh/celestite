@@ -10,14 +10,12 @@ module Celestite
   # Store the default template in case #render is called without a template
   @@default_template : String?
 
-  # CrystalVue.initialize does the full range of initialization (launches all processes) to get the renderer going
+  # Celestite.initialize does the full range of initialization (launches all processes) to get the renderer going
   def self.initialize(engine : Celestite::Engine, component_dir, routes_file = nil, port = 4000, template_dir = nil, @@default_template = nil, build_dir = nil, build_dir_public_path = nil) : Renderer
-    if engine == Celestite::Engine::Vue
-      renderer = Celestite::Renderer::Vue.new(component_dir: component_dir, routes_file: routes_file, port: port, template_dir: template_dir, default_template: @@default_template, build_dir: build_dir, build_dir_public_path: build_dir_public_path)
-    elsif engine == Celestite::Engine::Svelte
+    if engine == Celestite::Engine::Svelte
       renderer = Celestite::Renderer::Svelte.new(component_dir: component_dir, port: port, build_dir: build_dir, build_dir_public_path: build_dir_public_path)
     else
-      raise "Engine must be defined - either Celestite::Engine::Vue or Celestite::Engine::Svelte"
+      raise "Engine must be defined - Celestite::Engine::Svelte (for now)"
     end
     @@node_processes << renderer.start_server
     @@renderer = renderer if renderer

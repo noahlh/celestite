@@ -1,12 +1,12 @@
 name: celestite
-version: 0.1.2
+version: 0.1.3
 
 scripts:
   postinstall: npm install
 
 authors:
-  - Noah Lehmann-Haupt <nlh@noahlh.com>
+  - Noah Lehmann-Haupt <nlh@nlh.me>
 
-crystal: 0.32.1
+crystal: 0.35.1
 
 license: MIT

@@ -128,33 +128,6 @@ module Celestite
       include Renderer
     end
 
-    class Vue
-      include Renderer
-
-      def initialize(@component_dir = nil, @routes_file = nil, @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
-        super
-        @engine = Celestite::Engine::Vue
-        @process_command = String.build do |str|
-          common_args = String.build do |args|
-            args << "NODE_ENV=#{ENV["CELESTITE"]} "
-            args << "NODE_PORT=#{port} " if @port
-            args << "VUE_TEMPLATE_DIR=#{template_dir} " if @template_dir
-            args << "VUE_COMPONENT_DIR=#{component_dir} " if @component_dir
-            args << "VUE_ROUTES_FILE=#{@routes_file} " if @routes_file
-            args << "VUE_CLIENT_BUILD_DIR=#{build_dir} " if @build_dir
-            args << "VUE_CLIENT_BUILD_DIR_PUBLIC_PATH=#{build_dir_public_path} " if @build_dir_public_path
-          end
-          str << "make -r " << ENV["CELESTITE"] << " "
-          str << common_args
-        end
-      end
-
-      def start_server
-        raise "Error - you must define routes_file to launch the node process for Vue" unless @routes_file
-        super
-      end
-    end
-
     class Svelte
       include Renderer
 
