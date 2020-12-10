@@ -19,6 +19,8 @@ const alias = {
 };
 const extensions = [".mjs", ".js", ".json", ".svelte", ".html"];
 const mainFields = ["svelte", "module", "browser", "main"];
+// const modules = ["node_modules", "/Users/nlh/Projects/ultraworking/node_modules"];
+const modules = ["node_modules"];
 
 const sveltePreprocess = require("svelte-preprocess");
 
@@ -26,7 +28,7 @@ module.exports = {
   client: {
     entry: config.client.entry(),
     output: config.client.output(),
-    resolve: { alias, extensions, mainFields },
+    resolve: { alias, extensions, mainFields, modules },
     module: {
       rules: [
         {
@@ -84,7 +86,7 @@ module.exports = {
     entry: config.server.entry(),
     output: config.server.output(),
     target: "node",
-    resolve: { alias, extensions, mainFields },
+    resolve: { alias, extensions, mainFields, modules },
     externals: Object.keys(pkg.dependencies).concat("encoding"),
     module: {
       rules: [

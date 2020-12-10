@@ -2,8 +2,9 @@
 # The Renderer class does the heavy lifting of actually calling the node process to render
 ##
 
-require "logger"
 require "http/client"
+require "log"
+require "colorize"
 
 module Celestite
   module Renderer
@@ -19,15 +20,11 @@ module Celestite
     getter node_process : Process?
     getter errors : IO::Memory
 
-    ##
-    # You can pass in a logger to keep things neat & tidy (like with Amber).
-    ##
+    Log = ::Log.for("celestite".colorize(:light_green).to_s)
 
-    property logger : Logger
-
-    def initialize(@component_dir = nil, @routes_file = nil, @logger = Logger.new(nil), @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
+    def initialize(@component_dir = nil, @routes_file = nil, @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
       ENV["CELESTITE"] ||= "development"
-      @logger.info "Renderer Initialized"
+      Log.info { "Renderer Initialized" }
       @client = HTTP::Client.new("localhost", @port)
       @errors = IO::Memory.new
     end
@@ -49,7 +46,7 @@ module Celestite
       spawn do
         while line = node_process.output.gets
           begin
-            @logger.info(line)
+            Log.info { line }
           rescue
             @errors.puts("Stream error - process go bye bye :(")
           end
@@ -59,7 +56,7 @@ module Celestite
       spawn do
         while line = node_process.error.gets
           begin
-            @logger.error(line)
+            Log.error { line }
             @errors.puts(line)
           rescue
             @errors.puts("Stream error - process go bye bye :(")
@@ -67,27 +64,14 @@ module Celestite
         end
       end
 
-      @logger.info "Renderer spawned process #{node_process.pid}"
+      Log.info { "Renderer spawned process #{node_process.pid}" }
       return node_process
     end
 
     def start_server
       raise "Error - you must define component_dir to launch the node process" unless @component_dir
-      @logger.info("Starting node server with command: #{@process_command}")
-
-      # retry_count = 0
-      # while node_process = self.spawn_process
-      #   sleep 1
-      #   if (node_process.terminated? && retry_count < 3)
-      #     @logger.info("Node process terminated.  Retrying...")
-      #     retry_count += 1
-      #   else
-      #     break
-      #   end
-      # end
-      # raise "Error - node process tried to start 3 times but failed" if node_process.terminated?
+      Log.info { "Starting node server with command: #{@process_command}" }
       node_process = self.spawn_process
-      # raise "Error - node process failed to start" if node_process.terminated?
       @node_process = node_process
       return node_process
     end
@@ -95,7 +79,7 @@ module Celestite
     def kill_process_tree(pid : Int)
       begin
         io = IO::Memory.new
-        # If pgrep is successful that this process has children
+        # If pgrep is successful then this process has children
         if Process.run("pgrep", shell: false, args: ["-P", "#{pid}"], output: io).success?
           child_pids = io.to_s.split
           child_pids.each do |child_pid|
@@ -103,7 +87,7 @@ module Celestite
           end
         end
         # No more children, so start killing from the bottom up
-        @logger.info("Nuking child process #{pid}")
+        Log.info { "Nuking child process #{pid}" }
         Process.kill(Signal::TERM, pid.to_i)
       rescue ex
       end
@@ -111,15 +95,15 @@ module Celestite
 
     def kill_server
       if node_process = @node_process
-        @logger.info("Nuking node process #{node_process.pid}")
+        Log.info { "Nuking node process #{node_process.pid}" }
         kill_process_tree(node_process.pid)
       end
     end
 
     def render(path : String?, context : Celestite::Context? = nil, template : String? = @default_template)
-      @logger.info "Rendering #{path}"
-      @logger.info "Context: #{context.to_json}"
-      @logger.info "Template: #{template}"
+      Log.info { "Rendering #{path}" }
+      Log.info { "Context: #{context.to_json}" }
+      Log.info { "Template: #{template}" }
 
       path_with_query = String.build do |q|
         q << path
@@ -129,7 +113,15 @@ module Celestite
       method = (context || template) ? "POST" : "GET"
       headers = (method == "POST") ? HTTP::Headers{"content-type" => "application/json"} : nil
 
-      response = @client.exec(method: method, path: path_with_query, headers: headers, body: context.to_json).body
+      Log.debug { "Calling node server:" }
+      Log.debug { "Headers: #{headers}" }
+      Log.debug { "#{method} #{path_with_query}" }
+
+      response = @client.exec(method: method, path: path_with_query, headers: headers, body: context.to_json)
+
+      Log.debug { "Response status: #{response.status}" }
+
+      return response.body
     end
 
     class Generic
@@ -139,7 +131,7 @@ module Celestite
     class Vue
       include Renderer
 
-      def initialize(@component_dir = nil, @routes_file = nil, @logger = Logger.new(nil), @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
+      def initialize(@component_dir = nil, @routes_file = nil, @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
         super
         @engine = Celestite::Engine::Vue
         @process_command = String.build do |str|
@@ -166,7 +158,7 @@ module Celestite
     class Svelte
       include Renderer
 
-      def initialize(@component_dir = nil, @routes_file = nil, @logger = Logger.new(nil), @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
+      def initialize(@component_dir = nil, @routes_file = nil, @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
         super
         @engine = Celestite::Engine::Svelte
         @process_command = String.build do |str|
