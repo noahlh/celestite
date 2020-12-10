@@ -16,12 +16,10 @@ polka()
     json(),
     logger,
     sapper.middleware({
-      session: (req, res) => req.body
+      session: (req, res) => req.body,
     })
   )
-  .listen(PORT, err => {
+  .listen(PORT, (err) => {
     if (err) console.error("error", err);
-    console.log(
-      `[node] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${PORT}`
-    );
+    console.log(`[node] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${PORT}`);
   });

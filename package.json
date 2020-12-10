@@ -5,36 +5,20 @@
   "author": "Noah Lehmann-Haupt <nlh@nlh.me>",
   "license": "MIT",
   "dependencies": {
-    "@babel/cli": "^7.6.2",
-    "@babel/core": "^7.6.2",
-    "@babel/preset-env": "^7.6.2",
-    "babel-loader": "^8.0.6",
-    "babel-plugin-module-resolver": "^3.2.0",
     "body-parser": "^1.19.0",
-    "css-loader": "^2.0.1",
-    "express": "^4.17.1",
-    "node-sass": "^4.13.0",
-    "nodemon": "^1.19.2",
     "polka": "next",
-    "sass-loader": "^8.0.0",
-    "vue": "^2.5.21",
-    "vue-loader": "^15.4.2",
-    "vue-router": "^3.0.2",
-    "vue-server-renderer": "^2.5.21",
-    "vue-template-compiler": "^2.5.21",
-    "vuex": "^3.0.1",
-    "vuex-router-sync": "^5.0.0",
-    "webpack": "^4.28.2",
-    "webpack-cli": "^3.1.2",
-    "webpack-dev-middleware": "^3.6.0",
-    "webpack-hot-middleware": "^2.24.3",
-    "webpack-manifest-plugin": "^2.0.4",
-    "webpack-merge": "^4.1.5",
-    "webpack-node-externals": "^1.7.2"
+    "uuid": "^8.3.1"
   },
   "devDependencies": {
+    "css-loader": "^3.6.0",
+    "file-loader": "^6.2.0",
+    "mini-css-extract-plugin": "^0.9.0",
+    "node-sass": "^4.13.1",
+    "pug": "^2.0.4",
     "sapper": "github:noahlh/sapper#development",
-    "svelte": "^3.0.0",
-    "svelte-loader": "^2.9.0"
+    "svelte": "^3.30.1",
+    "svelte-loader": "^2.9.0",
+    "svelte-preprocess": "^3.9.12",
+    "webpack": "^4.44.2"
   }
 }
