@@ -19,7 +19,6 @@ const alias = {
 };
 const extensions = [".mjs", ".js", ".json", ".svelte", ".html"];
 const mainFields = ["svelte", "module", "browser", "main"];
-// const modules = ["node_modules", "/Users/nlh/Projects/ultraworking/node_modules"];
 const modules = ["node_modules"];
 
 const sveltePreprocess = require("svelte-preprocess");

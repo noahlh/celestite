@@ -2,7 +2,7 @@ import polka from "polka";
 import { json } from "body-parser";
 import * as sapper from "@sapper/server";
 
-const { PORT, NODE_ENV } = process.env;
+const { NODE_PORT, NODE_ENV } = process.env;
 
 function logger(req, res, next) {
   console.log(`[node] ${req.method} ${req.path} ${res.statusCode}`);
@@ -19,7 +19,7 @@ polka()
       session: (req, res) => req.body,
     })
   )
-  .listen(PORT, (err) => {
+  .listen(NODE_PORT, (err) => {
     if (err) console.error("error", err);
-    console.log(`[node] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${PORT}`);
+    console.log(`[node] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${NODE_PORT}`);
   });
