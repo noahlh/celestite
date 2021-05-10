@@ -1,40 +1,32 @@
 # Init
 .EXPORT_ALL_VARIABLES:
-.PHONY: build production test development clean
+.PHONY: development
 
 # Paths
 NODE_PATH := $(abspath ../../node_modules)
-ROOT_PATH := $(abspath ../../)
 
 # Variables
-SAPPER_BUILD_DIR ?= $(abspath ./__sapper__/build)
-SAPPER_BUILD_DIR_TRIMMED := $(patsubst %/,%,$(SAPPER_BUILD_DIR))
+ROOT_DIR ?= $(abspath ../../)
+ROOT_DIR_TRIMMED := $(patsubst %/,%,$(ROOT_DIR))
 
-SAPPER_ROUTES ?= $(abspath ./)
-# SAPPER_ROUTES_TRIMMED := $(patsubst %/,%,$(SAPPER_ROUTES))
-SAPPER_ROUTES_TRIMMED := $(abspath $(SAPPER_ROUTES))
+COMPONENT_DIR ?= $(abspath ./components)
+COMPONENT_DIR_TRIMMED := $(patsubst %/,%,$(COMPONENT_DIR))
 
-SAPPER_SRC ?= $(abspath ./)
-SAPPER_SRC_TRIMMED := $(patsubst %/,%,$(SAPPER_SRC))
+LAYOUT_DIR ?= $(abspath ./components/layouts)
+LAYOUT_DIR_TRIMMED := $(patsubst %/,%,$(LAYOUT_DIR))
 
-SAPPER_OUTPUT := $(abspath $(ROOT_PATH)/src/svelte-scripts/node_modules/@sapper)
+BUILD_DIR ?= $(abspath ./build)
+BUILD_DIR_TRIMMED := $(patsubst %/,%,$(BUILD_DIR))
 
-SAPPER_SRC_FILES := $(wildcard *.js *.html)
-SAPPER_ROUTE_FILES := $(wildcard $(SAPPER_ROUTES_TRIMMED)/*/*.js $(SAPPER_ROUTES_TRIMMED)/*/*.svelte)
+SRC_FILES := $(wildcard *.js *.html)
+COMPONENT_FILES := $(wildcard $(COMPONENT_DIR_TRIMMED)/*/*.js $(COMPONENT_DIR_TRIMMED)/*/*.svelte)
 
 # Rules
-build: $(SAPPER_BUILD_DIR_TRIMMED)/.make.build
-
-production test: build
-	NODE_ENV=$(NODE_ENV) NODE_PATH=$(NODE_PATH) node $(SAPPER_BUILD_DIR_TRIMMED)
-
 development:
-	$(NODE_PATH)/sapper/sapper dev --no-hot -p $(NODE_PORT) --routes $(SAPPER_ROUTES_TRIMMED) --src $(ROOT_PATH)/src/svelte-scripts/ --output $(SAPPER_OUTPUT) --build-dir $(SAPPER_BUILD_DIR_TRIMMED)
+	NODE_PATH=$(NODE_PATH) NODE_ENV=$(NODE_ENV) NODE_PORT=$(NODE_PORT) ROOT_DIR=$(ROOT_DIR_TRIMMED) COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) LAYOUT_DIR=$(LAYOUT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) node svelte-render-server
 
-$(SAPPER_BUILD_DIR_TRIMMED)/.make.build: $(SAPPER_SRC_FILES) $(SAPPER_ROUTE_FILES)
-	$(NODE_PATH)/sapper/sapper build $(SAPPER_BUILD_DIR_TRIMMED) -p $(NODE_PORT) --routes $(SAPPER_ROUTES_TRIMMED) --src $(SAPPER_SRC_TRIMMED) --output $(SAPPER_OUTPUT)
-	touch $(SAPPER_BUILD_DIR_TRIMMED)/.make.build
+production:
+	NODE_PATH=$(NODE_PATH) NODE_ENV=$(NODE_ENV) NODE_PORT=$(NODE_PORT) ROOT_DIR=$(ROOT_DIR_TRIMMED) COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) LAYOUT_DIR=$(LAYOUT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) node svelte-render-server
 
-clean:
-	rm -rf $(SAPPER_BUILD_DIR_TRIMMED)/.make.build
+
 

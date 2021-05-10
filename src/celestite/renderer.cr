@@ -1,10 +1,10 @@
-##
-# The Renderer class does the heavy lifting of actually calling the node process to render
-##
-
 require "http/client"
 require "log"
 require "colorize"
+
+##
+# The Renderer class does the heavy lifting of actually calling the node process to render
+##
 
 module Celestite
   module Renderer
@@ -32,6 +32,7 @@ module Celestite
           common_args = String.build do |args|
             args << "NODE_ENV=#{@config.env} "
             args << "NODE_PORT=#{@config.port} " if @config.port
+            args << "ROOT_DIR=#{@config.root_dir} " if @config.root_dir
             args << "COMPONENT_DIR=#{@config.component_dir} " if @config.component_dir
             args << "LAYOUT_DIR=#{@config.layout_dir} " if @config.layout_dir
             args << "BUILD_DIR=#{@config.build_dir} " if @config.build_dir
@@ -118,7 +119,7 @@ module Celestite
       Log.info { "Layout: #{layout}" }
 
       path_with_query = String.build do |q|
-        q << component
+        q << "/#{component}"
         q << "?layout=#{layout}" if layout
       end
 
