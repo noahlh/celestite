@@ -7,14 +7,8 @@ import pkg from "body-parser";
 const { json } = pkg;
 
 // Bring out yer environment vars...(*ding*)!
-const {
-  NODE_ENV,
-  NODE_PORT,
-  ROOT_DIR,
-  COMPONENT_DIR,
-  LAYOUT_DIR,
-  BUILD_DIR,
-} = process.env;
+const { NODE_ENV, NODE_PORT, ROOT_DIR, COMPONENT_DIR, LAYOUT_DIR, BUILD_DIR } =
+  process.env;
 
 const dev = NODE_ENV == "development";
 
@@ -37,6 +31,10 @@ const serverConfig = createConfiguration({
   },
   devOptions: {
     port: 0,
+  },
+  buildOptions: {
+    out: join(BUILD_DIR, "server"),
+    clean: true,
   },
   root: ROOT_DIR,
 });
@@ -62,10 +60,20 @@ const clientConfig = createConfiguration({
   mount: {
     [COMPONENT_DIR]: "/",
   },
+  devOptions: {
+    hmr: true,
+    port: 8080,
+    open: "none",
+    output: "stream",
+  },
+  packageOptions: {
+    rollup: {
+      dedupe: ["svelte"],
+    },
+  },
   buildOptions: {
-    out: BUILD_DIR,
+    out: join(BUILD_DIR, "client"),
     clean: true,
-    watch: false,
   },
   root: ROOT_DIR,
 });
@@ -85,43 +93,57 @@ function startTimer(req, res, next) {
   next();
 }
 
-// If we're doing layouts, synchronously load them into an in-memory array.
-// Since layouts are almost always going to be super lightweight, for now synchronous + in-memory is fine.
-const layoutFiles = [];
-
-if (LAYOUT_DIR) {
-  readdirSync(LAYOUT_DIR).forEach((file) => {
+function loadSupportFiles(dir) {
+  let tempArray = [];
+  readdirSync(dir).forEach((file) => {
     const name = parse(file).name + parse(file).ext;
-    const filepath = _resolve(LAYOUT_DIR, file);
+    const filepath = _resolve(dir, file);
     const stat = statSync(filepath);
     const isFile = stat.isFile();
     if (isFile) {
       const body = readFileSync(filepath, "utf-8");
-      layoutFiles.push({ name, body });
+      tempArray.push({ name, body });
     }
   });
+  return tempArray;
 }
 
-// Initialize Snowpack
+// If we're doing layouts, synchronously load them into an in-memory array.
+// Since layouts are almost always going to be super lightweight, for now synchronous + in-memory is fine.
+let layoutFiles = [];
+
+if (LAYOUT_DIR) {
+  layoutFiles = loadSupportFiles(LAYOUT_DIR);
+}
+
+let svelteRenderHandler;
+
 clearCache();
-const { result } = await build({ config: clientConfig });
+
+NODE_ENV == "production"
+  ? await build({ config: clientConfig })
+  : await startServer({ config: clientConfig });
+
 const snowpackServer = await startServer({ config: serverConfig });
 const snowpackRuntime = snowpackServer.getServerRuntime();
-const svelteRenderHandler = initializeSvelteRenderHandler(
+svelteRenderHandler = initializeSvelteRenderHandler({
   snowpackServer,
   snowpackRuntime,
-  layoutFiles
-);
+  layoutFiles,
+  env: NODE_ENV,
+});
 
-// Take the snowpack runtime & layouts and return a middleware to handle the actual render
-function initializeSvelteRenderHandler(
+function initializeSvelteRenderHandler({
   snowpackServer,
   snowpackRuntime,
-  layoutFiles
-) {
+  layoutFiles,
+  env,
+}) {
   return async (req, res, next) => {
     const { pathname, layoutRequested } = parseUrl(req.url);
-    const { layout } = getLayout(layoutRequested, layoutFiles);
+    const layout = getFile(layoutRequested, layoutFiles);
+    let component;
+
     let componentURL = snowpackServer.getUrlForFile(
       join(COMPONENT_DIR, pathname)
     );
@@ -136,8 +158,8 @@ function initializeSvelteRenderHandler(
       next();
       return;
     }
+    component = importedComponent.exports.default;
 
-    const component = importedComponent.exports.default;
     let ssr;
     try {
       ssr = component.render({
@@ -156,20 +178,53 @@ function initializeSvelteRenderHandler(
       injectHead += `<style>${ssr.css.code}</style>`;
     }
 
-    let clientJs = (({ pathname, body }) => {
-      return ` 
-        import App from "${pathname}.js";
-        const app = new App({
-          target: document.querySelector("#celestite-server-rendered"),
-          hydrate: true,
-          props: {
-            context: ${JSON.stringify(body)}
-          },
-        });
-      `;
-    })({ pathname, body: req.body });
+    let clientJs;
+    let injectClient;
 
-    let injectClient = `<script type='module'>${clientJs}</script>`;
+    if (env == "development") {
+      clientJs = (({ pathname, body }) => {
+        return ` 
+          import App from "http://localhost:8080${pathname}.js";  
+          const app = new App({
+            target: document.querySelector("#celestite-app"),
+            hydrate: true,
+            props: {
+              context: ${JSON.stringify(body)}
+            },
+          });
+
+          if (import.meta.hot) {
+            import.meta.hot.accept();
+            import.meta.hot.dispose(() => {
+              app.$destroy();
+            });
+          }
+        `;
+      })({ pathname, body: req.body });
+
+      injectClient = `
+        <script>window.HMR_WEBSOCKET_URL = 'ws://localhost:8080';</script>
+        <script type="module" src="http://localhost:8080/_snowpack/hmr-client.js"></script>
+        <script type='module'>${clientJs}</script>
+      `;
+    } else {
+      clientJs = (({ pathname, body }) => {
+        return ` 
+          import App from "/client${pathname}.js";  
+          const app = new App({
+            target: document.querySelector("#celestite-app"),
+            hydrate: true,
+            props: {
+              context: ${JSON.stringify(body)}
+            },
+          });
+        `;
+      })({ pathname, body: req.body });
+
+      injectClient = `
+        <script type='module'>${clientJs}</script>
+      `;
+    }
 
     const output = layout
       .replace("<!-- CELESTITE HEAD -->", injectHead)
@@ -188,16 +243,20 @@ function parseUrl(reqURL) {
   return { pathname, layoutRequested };
 }
 
-function getLayout(layoutRequested, layoutFiles) {
-  const layoutResult = layoutFiles.find((file) => file.name == layoutRequested);
-  const layout = layoutResult ? layoutResult.body : null;
-  return { layout };
+function getFile(fileRequested, files) {
+  const fileFound = files.find((file) => file.name == fileRequested);
+  const fileResult = fileFound ? fileFound.body : null;
+  return fileResult;
+}
+
+function pathToCompiledFile(pathname) {
+  return pathname.replace(/\//g, "").replace(/\.svelte$/, ".svelte.js");
 }
 
 // Initialize Polka
 polka()
   .get("*", startTimer, svelteRenderHandler, logger)
-  .post("*", startTimer, json(), svelteRenderHandler, logger)
+  .post("*", startTimer, json({ limit: "50mb" }), svelteRenderHandler, logger)
   .listen(NODE_PORT, (err) => {
     if (err) console.error("error: ", err);
     console.log(

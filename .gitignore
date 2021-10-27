@@ -15,4 +15,7 @@ package-lock.json
 # node / yarn-related files
 /node_modules/
 
+# vscode files
+/.vscode/
+
 

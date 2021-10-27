@@ -16,7 +16,7 @@ module Celestite
 
     def initialize(@config = Config.new)
       Log.info { "Renderer Initialized" }
-      @client = HTTP::Client.new("localhost", @config.port)
+      # @client = HTTP::Client.new("localhost", @config.port)
     end
 
     class Generic
@@ -130,7 +130,8 @@ module Celestite
       Log.debug { "Headers: #{headers}" }
       Log.debug { "#{method} #{path_with_query}" }
 
-      response = @client.exec(method: method, path: path_with_query, headers: headers, body: context.to_json)
+      # response = @client.exec(method: method, path: path_with_query, headers: headers, body: context.to_json)
+      response = HTTP::Client.exec(method: method, url: "http://localhost:#{@config.port}#{path_with_query}", headers: headers, body: context.to_json)
 
       Log.debug { "Response status: #{response.status}" }
 
