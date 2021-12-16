@@ -30,22 +30,22 @@ Celestite has been developed / tested with the [Amber](https://amberframework.or
 
 Considering you have installed Crystal already.
 
-####macOS
+### MacOS
 
-#####Homebrew
+Homebrew
 ```
 brew tap amberframework/amber
 brew install amber
 ```
-#####MacPorts
+MacPorts
 ```
 sudo port selfupdate
 sudo port install amber
 ```
 
-####Ubuntu or Debian
+###Ubuntu or Debian
 
-#####From Source
+From Source
 ```
 sudo apt-get install libreadline-dev libsqlite3-dev libpq-dev libmysqlclient-dev libssl-dev libyaml-dev libpcre3-dev libevent-dev
 curl -L https://github.com/amberframework/amber/archive/stable.tar.gz | tar xz
@@ -53,7 +53,7 @@ cd amber-stable/
 shards install
 make install
 ```
-#####Linuxbrew
+Linuxbrew
 ```
 brew tap amberframework/amber
 brew install amber
@@ -61,17 +61,16 @@ brew install amber
 
 ### 2. Setup Amber App
 
-####Create new app
+Create new app
 ```
 amber new app-name
 cd app-name
 ```
-
-####App Content
-#####`application_controller.cr` can be found in ./src/controllers
-#####`routes.cr` can be found in ./config/
-#####`index.svelte` and `_error.svelte` have to be added in ./src/views/
-#####Remove or hide `index.slang`,`application.slang` and `mailer.slang` because they break the build
+App Content
+>`application_controller.cr` can be found in ./src/controllers
+>`routes.cr` can be found in ./config/
+>`index.svelte` and `_error.svelte` have to be added in ./src/views/
+>Remove or hide `index.slang`,`application.slang` and `mailer.slang` because they break the build
 ```
 .
 ├── bin
@@ -89,7 +88,7 @@ cd app-name
 └── src
 
 ```
-#####Build the app and run server
+Build the app and run server
 ```
 amber watch
 ```
