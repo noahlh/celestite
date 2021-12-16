@@ -26,7 +26,77 @@ The render server was built using node 10.15.3 (in particular it uses the WHATWG
 
 Celestite has been developed / tested with the [Amber](https://amberframework.org) web framework, but designed to work standalone as well. There's also no reason it won't work with [Lucky](https://luckyframework.org/), [Kemal](http://kemalcr.com/), [Athena](https://athenaframework.org), etc. (but no work integrating with those has been done yet.) The steps below assume you'll be working with Amber.
 
-### 1. Add celestite to your application's `shard.yml` and run `shards install`
+### 1. Install Amber
+
+Considering you have installed Crystal already.
+
+#### MacOS
+
+##### Homebrew
+```
+brew tap amberframework/amber
+brew install amber
+```
+##### MacPorts
+```
+sudo port selfupdate
+sudo port install amber
+```
+
+#### Ubuntu or Debian
+
+##### From Source
+```
+sudo apt-get install libreadline-dev libsqlite3-dev libpq-dev libmysqlclient-dev libssl-dev libyaml-dev libpcre3-dev libevent-dev
+curl -L https://github.com/amberframework/amber/archive/stable.tar.gz | tar xz
+cd amber-stable/
+shards install
+make install
+```
+##### Linuxbrew
+```
+brew tap amberframework/amber
+brew install amber
+```
+
+### 2. Setup Amber App
+
+#### Create new app
+```
+amber new app-name
+cd app-name
+```
+#### App Content
+>`application_controller.cr` can be found in ./src/controllers
+
+>`routes.cr` can be found in ./config/
+
+>`index.svelte` and `_error.svelte` have to be added in ./src/views/
+
+>Remove or hide `index.slang`,`application.slang` and `mailer.slang` because they break the build
+```
+.
+├── bin
+├── config
+├── db
+├── docker-compose.yml
+├── Dockerfile
+├── lib
+├── package.json
+├── public
+├── README.md
+├── shard.lock
+├── shard.yml
+├── spec
+└── src
+
+```
+#### Build the app and run server
+```
+amber watch
+```
+
+### 3. Add celestite to your application's `shard.yml` and run `shards install`
 
 ```yaml
 dependencies:
@@ -35,7 +105,7 @@ dependencies:
     version: ~> 0.1.3
 ```
 
-### 2. Include the helper `Celestite::Adapter::Amber` in your `application_controller.cr`
+### 4. Include the helper `Celestite::Adapter::Amber` in your `application_controller.cr`
 
 This adds the `celestite_render` macro.
 
@@ -50,7 +120,7 @@ This adds the `celestite_render` macro.
   end
 ```
 
-### 3. Add `celestite_amber_init.cr` to `/config/initializers`
+### 5. Add `celestite_amber_init.cr` to `/config/initializers`
 
 [An example](/config/celestite_amber_init.example.cr) is provided. You can name this file whatever you want, just so long as it gets called upon initialization.
 
