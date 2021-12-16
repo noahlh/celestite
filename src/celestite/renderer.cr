@@ -88,7 +88,7 @@ module Celestite
         end
         # No more children, so start killing from the bottom up
         Log.info { "Nuking child process #{pid}" }
-        Process.kill(Signal::TERM, pid.to_i)
+        Process.signal(Signal::TERM, pid.to_i)
       rescue ex
       end
     end
