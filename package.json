@@ -13,7 +13,7 @@
     "css-loader": "^3.6.0",
     "file-loader": "^6.2.0",
     "mini-css-extract-plugin": "^0.9.0",
-    "node-sass": "^4.13.1",
+    "node-sass": "^7.0.0",
     "pug": "^2.0.4",
     "sapper": "github:noahlh/sapper#development",
     "svelte": "^3.30.1",
