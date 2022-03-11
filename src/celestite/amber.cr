@@ -9,5 +9,11 @@ module Celestite
         {% end %}
       end
     end
+
+    module Kemal
+      macro celestite_render(component = nil, context = nil, layout = nil)
+        Celestite.render(component: {{ component }}, context: {{ context }}, layout: {{ layout }})
+      end
+    end
   end
 end
