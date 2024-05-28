@@ -7,8 +7,7 @@ import pkg from "body-parser";
 const { json } = pkg;
 
 // Bring out yer environment vars...(*ding*)!
-const { NODE_ENV, NODE_PORT, ROOT_DIR, COMPONENT_DIR, LAYOUT_DIR, BUILD_DIR } =
-  process.env;
+const { NODE_ENV, NODE_PORT, SNOWPACK_PORT, ROOT_DIR, COMPONENT_DIR, LAYOUT_DIR, BUILD_DIR } = process.env;
 
 const dev = NODE_ENV == "development";
 
@@ -62,7 +61,7 @@ const clientConfig = createConfiguration({
   },
   devOptions: {
     hmr: true,
-    port: 8080,
+    port: parseInt(SNOWPACK_PORT, 10),
     open: "none",
     output: "stream",
   },
@@ -81,9 +80,7 @@ const clientConfig = createConfiguration({
 // Simple logging middleware
 function logger(req, res, next) {
   console.log(
-    `[node] ${req.method} ${req.path} ${res.statusCode} - ${(
-      performance.now() - req.startTime
-    ).toPrecision(3)}ms`
+    `[node] ${req.method} ${req.path} ${res.statusCode} - ${(performance.now() - req.startTime).toPrecision(3)}ms`
   );
   res.end();
 }
@@ -120,9 +117,7 @@ let svelteRenderHandler;
 
 clearCache();
 
-NODE_ENV == "production"
-  ? await build({ config: clientConfig })
-  : await startServer({ config: clientConfig });
+NODE_ENV == "production" ? await build({ config: clientConfig }) : await startServer({ config: clientConfig });
 
 const snowpackServer = await startServer({ config: serverConfig });
 const snowpackRuntime = snowpackServer.getServerRuntime();
@@ -133,20 +128,13 @@ svelteRenderHandler = initializeSvelteRenderHandler({
   env: NODE_ENV,
 });
 
-function initializeSvelteRenderHandler({
-  snowpackServer,
-  snowpackRuntime,
-  layoutFiles,
-  env,
-}) {
+function initializeSvelteRenderHandler({ snowpackServer, snowpackRuntime, layoutFiles, env }) {
   return async (req, res, next) => {
     const { pathname, layoutRequested } = parseUrl(req.url);
     const layout = getFile(layoutRequested, layoutFiles);
     let component;
 
-    let componentURL = snowpackServer.getUrlForFile(
-      join(COMPONENT_DIR, pathname)
-    );
+    let componentURL = snowpackServer.getUrlForFile(join(COMPONENT_DIR, pathname));
     let importedComponent;
 
     try {
@@ -184,7 +172,7 @@ function initializeSvelteRenderHandler({
     if (env == "development") {
       clientJs = (({ pathname, body }) => {
         return ` 
-          import App from "http://localhost:8080${pathname}.js";  
+          import App from "http://localhost:${SNOWPACK_PORT}${pathname}.js";  
           const app = new App({
             target: document.querySelector("#celestite-app"),
             hydrate: true,
@@ -203,8 +191,8 @@ function initializeSvelteRenderHandler({
       })({ pathname, body: req.body });
 
       injectClient = `
-        <script>window.HMR_WEBSOCKET_URL = 'ws://localhost:8080';</script>
-        <script type="module" src="http://localhost:8080/_snowpack/hmr-client.js"></script>
+        <script>window.HMR_WEBSOCKET_URL = 'ws://localhost:${SNOWPACK_PORT}';</script>
+        <script type="module" src="http://localhost:${SNOWPACK_PORT}/_snowpack/hmr-client.js"></script>
         <script type='module'>${clientJs}</script>
       `;
     } else {
@@ -259,7 +247,5 @@ polka()
   .post("*", startTimer, json({ limit: "50mb" }), svelteRenderHandler, logger)
   .listen(NODE_PORT, (err) => {
     if (err) console.error("error: ", err);
-    console.log(
-      `[node] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${NODE_PORT}`
-    );
+    console.log(`[node] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${NODE_PORT}`);
   });
