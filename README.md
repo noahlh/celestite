@@ -132,6 +132,90 @@ To get around this, you can import Sapper's `onMount()` function. Any function w
 
 [You can read more about server-side rendering considerations here.](https://sapper.svelte.dev/docs#Server-side_rendering)
 
+## HTTPS/SSL Support for Development
+
+Celestite supports running the Snowpack dev server over HTTPS, which is useful when testing with tunneled connections (ngrok, localtunnel, etc.) or when your main application server requires HTTPS.
+
+### Setting up SSL Certificates
+
+#### 1. Install mkcert
+
+First, install mkcert for generating locally-trusted development certificates:
+
+```bash
+# macOS
+brew install mkcert
+
+# Linux
+# See https://github.com/FiloSottile/mkcert for instructions
+```
+
+#### 2. Install the local Certificate Authority
+
+**Important:** This step must be run to trust the certificates system-wide:
+
+```bash
+sudo mkcert -install
+```
+
+This will install mkcert's CA in your system trust store. You'll need to enter your password. Without this step, browsers will show certificate warnings.
+
+#### 3. Generate SSL Certificates
+
+In your project root directory, generate the certificates that Snowpack will use:
+
+```bash
+mkcert -key-file snowpack.key -cert-file snowpack.crt localhost 127.0.0.1 ::1
+```
+
+This creates `snowpack.key` and `snowpack.crt` files. These are already included in `.gitignore` and should not be committed to version control.
+
+### Using HTTPS Mode
+
+To enable HTTPS in development, set `dev_secure: true` in your Celestite configuration:
+
+```crystal
+Celestite.initialize(
+  dev_secure: true,  # Enables HTTPS for Snowpack dev server
+  # ... other config
+)
+```
+
+Alternatively, you can conditionally enable it based on environment:
+
+```crystal
+env = ENV["ENV"] || "development"
+
+Celestite.initialize(
+  env: env,
+  dev_secure: env == "development_secure",
+  # ... other config
+)
+```
+
+Then run your app with:
+
+```bash
+ENV=development_secure crystal run src/your_app.cr
+```
+
+### How It Works
+
+When `dev_secure: true` is set:
+
+- Snowpack dev server runs on HTTPS instead of HTTP
+- Client-side code dynamically constructs URLs based on the current hostname (not hardcoded to localhost)
+- WebSocket connections (HMR) use WSS instead of WS
+- Works seamlessly with tunneled connections using the tunnel's hostname
+
+### Default Behavior
+
+By default, `dev_secure` is `false` and Celestite runs in standard HTTP mode. Only enable HTTPS when:
+
+- Testing over tunneled connections (ngrok, etc.)
+- Your main application server requires HTTPS
+- Testing SSL-specific features
+
 ## Project status
 
 My goal/philosophy is to release early, release often, and get as much user feedback as early in the process as possible, so even though the perfectionist in me would like to spend another 6 years improving this, by then it'll be 2024 and who knows we might all be living underwater. No time like the present.

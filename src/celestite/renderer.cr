@@ -33,6 +33,7 @@ module Celestite
             args << "NODE_ENV=#{@config.env} "
             args << "NODE_PORT=#{@config.port} " if @config.port
             args << "SNOWPACK_PORT=#{@config.snowpack_port} " if @config.snowpack_port
+            args << "DEV_SECURE=#{@config.dev_secure} "
             args << "ROOT_DIR=#{@config.root_dir} " if @config.root_dir
             args << "COMPONENT_DIR=#{@config.component_dir} " if @config.component_dir
             args << "LAYOUT_DIR=#{@config.layout_dir} " if @config.layout_dir

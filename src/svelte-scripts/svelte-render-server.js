@@ -7,9 +7,12 @@ import pkg from "body-parser";
 const { json } = pkg;
 
 // Bring out yer environment vars...(*ding*)!
-const { NODE_ENV, NODE_PORT, SNOWPACK_PORT, ROOT_DIR, COMPONENT_DIR, LAYOUT_DIR, BUILD_DIR } = process.env;
+const { NODE_ENV, NODE_PORT, SNOWPACK_PORT, DEV_SECURE, ROOT_DIR, COMPONENT_DIR, LAYOUT_DIR, BUILD_DIR } = process.env;
 
-const dev = NODE_ENV == "development";
+const dev = NODE_ENV == "development" || NODE_ENV == "development_secure";
+const devSecure = NODE_ENV == "development_secure" || DEV_SECURE === "true";
+const devProtocol = devSecure ? "https" : "http";
+const devWsProtocol = devSecure ? "wss" : "ws";
 
 // Snowpack SSR config
 const serverConfig = createConfiguration({
@@ -64,6 +67,7 @@ const clientConfig = createConfiguration({
     port: parseInt(SNOWPACK_PORT, 10),
     open: "none",
     output: "stream",
+    secure: devSecure,
   },
   packageOptions: {
     rollup: {
@@ -169,10 +173,11 @@ function initializeSvelteRenderHandler({ snowpackServer, snowpackRuntime, layout
     let clientJs;
     let injectClient;
 
-    if (env == "development") {
+    if (env == "development" || env == "development_secure") {
       clientJs = (({ pathname, body }) => {
-        return ` 
-          import App from "http://localhost:${SNOWPACK_PORT}${pathname}.js";  
+        return `
+          const appUrl = '${devProtocol}://' + window.location.hostname + ':${SNOWPACK_PORT}${pathname}.js';
+          const { default: App } = await import(appUrl);
           const app = new App({
             target: document.querySelector("#celestite-app"),
             hydrate: true,
@@ -191,8 +196,13 @@ function initializeSvelteRenderHandler({ snowpackServer, snowpackRuntime, layout
       })({ pathname, body: req.body });
 
       injectClient = `
-        <script>window.HMR_WEBSOCKET_URL = 'ws://localhost:${SNOWPACK_PORT}';</script>
-        <script type="module" src="http://localhost:${SNOWPACK_PORT}/_snowpack/hmr-client.js"></script>
+        <script>window.HMR_WEBSOCKET_URL = '${devWsProtocol}://' + window.location.hostname + ':${SNOWPACK_PORT}';</script>
+        <script type="module">
+          const hmrClientScript = document.createElement('script');
+          hmrClientScript.type = 'module';
+          hmrClientScript.src = '${devProtocol}://' + window.location.hostname + ':${SNOWPACK_PORT}/_snowpack/hmr-client.js';
+          document.head.appendChild(hmrClientScript);
+        </script>
         <script type='module'>${clientJs}</script>
       `;
     } else {
