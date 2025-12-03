@@ -98,20 +98,34 @@ if (dev) {
 
 const layoutFiles = loadLayoutFiles(LAYOUT_DIR);
 
-// Collect CSS by reading source files and recursively finding imports
-// This is the most reliable approach since Vite's SSR module graph isn't always populated
+// CSS collection with caching for performance
+// Caches are invalidated when Vite detects file changes via HMR
+const cssCache = new Map();      // filePath -> css string
+const importsCache = new Map();  // filePath -> array of import paths
+
+// Clear caches when files change (Vite HMR)
+if (dev && vite) {
+  vite.watcher.on('change', (filePath) => {
+    if (filePath.endsWith('.svelte')) {
+      cssCache.delete(filePath);
+      importsCache.delete(filePath);
+    }
+  });
+}
+
 async function collectComponentCss(vite, componentPath) {
-  const allCss = [];
   const visited = new Set();
 
   async function getCssForComponent(svelteFilePath) {
-    // Request the CSS virtual module for this Svelte component
+    // Check cache first
+    if (cssCache.has(svelteFilePath)) {
+      return cssCache.get(svelteFilePath);
+    }
+
     const cssUrl = `${svelteFilePath}?svelte&type=style&lang.css`;
     try {
       const result = await vite.transformRequest(cssUrl);
       if (result?.code) {
-        // Vite wraps CSS in JS like: const __vite__css = "...css..."
-        // Or sometimes: export default "...css..."
         let css = '';
         const viteMatch = result.code.match(/const __vite__css\s*=\s*"((?:[^"\\]|\\.)*)"/s);
         if (viteMatch) {
@@ -123,25 +137,31 @@ async function collectComponentCss(vite, componentPath) {
           }
         }
         if (css) {
-          return css
+          css = css
             .replace(/\\n/g, '\n')
             .replace(/\\t/g, '\t')
             .replace(/\\"/g, '"')
             .replace(/\\\\/g, '\\');
+          cssCache.set(svelteFilePath, css);
+          return css;
         }
       }
     } catch (e) {
-      // Component might not have styles, that's ok
+      // Component might not have styles
     }
+    cssCache.set(svelteFilePath, '');
     return '';
   }
 
   function getImportsFromSource(filePath) {
-    // Read the source file directly and parse imports
+    // Check cache first
+    if (importsCache.has(filePath)) {
+      return importsCache.get(filePath);
+    }
+
     try {
       const source = readFileSync(filePath, 'utf-8');
       const imports = [];
-      // Match import statements with .svelte files
       const importRegex = /import\s+[\w\s{},*]+\s+from\s+["']([^"']+\.svelte)["']/g;
       let match;
       while ((match = importRegex.exec(source)) !== null) {
@@ -150,39 +170,39 @@ async function collectComponentCss(vite, componentPath) {
         if (importPath.startsWith('./') || importPath.startsWith('../')) {
           imports.push(resolve(fileDir, importPath));
         } else if (importPath.startsWith('/')) {
-          // Absolute path relative to Vite root
           imports.push(join(COMPONENT_DIR, importPath));
         }
       }
+      importsCache.set(filePath, imports);
       return imports;
     } catch (e) {
-      // File might not exist or be readable
+      importsCache.set(filePath, []);
       return [];
     }
   }
 
-  async function collectFromComponent(filePath) {
+  // Collect all component paths first (synchronous, uses cached imports)
+  function collectAllPaths(filePath) {
     const normalizedPath = filePath.split('?')[0];
     if (visited.has(normalizedPath)) return;
     visited.add(normalizedPath);
 
     if (normalizedPath.endsWith('.svelte')) {
-      // Get CSS for this component
-      const css = await getCssForComponent(normalizedPath);
-      if (css) {
-        allCss.push(css);
-      }
-
-      // Get imports and recurse
       const imports = getImportsFromSource(normalizedPath);
       for (const importPath of imports) {
-        await collectFromComponent(importPath);
+        collectAllPaths(importPath);
       }
     }
   }
 
-  await collectFromComponent(componentPath);
-  return allCss.join('\n');
+  collectAllPaths(componentPath);
+
+  // Fetch all CSS in parallel
+  const cssResults = await Promise.all(
+    Array.from(visited).map(path => getCssForComponent(path))
+  );
+
+  return cssResults.filter(css => css).join('\n');
 }
 
 // Generate client-side hydration script
