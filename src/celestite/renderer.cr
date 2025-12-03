@@ -32,7 +32,7 @@ module Celestite
           common_args = String.build do |args|
             args << "NODE_ENV=#{@config.env} "
             args << "NODE_PORT=#{@config.port} " if @config.port
-            args << "SNOWPACK_PORT=#{@config.snowpack_port} " if @config.snowpack_port
+            args << "VITE_PORT=#{@config.vite_port} " if @config.vite_port
             args << "DEV_SECURE=#{@config.dev_secure} "
             args << "ROOT_DIR=#{@config.root_dir} " if @config.root_dir
             args << "COMPONENT_DIR=#{@config.component_dir} " if @config.component_dir

@@ -1,9 +1,6 @@
 # Init
 .EXPORT_ALL_VARIABLES:
-.PHONY: development development_secure
-
-# Paths
-NODE_PATH := $(abspath ../../node_modules)
+.PHONY: development development_secure production build
 
 # Variables
 ROOT_DIR ?= $(abspath ../../)
@@ -18,18 +15,23 @@ LAYOUT_DIR_TRIMMED := $(patsubst %/,%,$(LAYOUT_DIR))
 BUILD_DIR ?= $(abspath ./build)
 BUILD_DIR_TRIMMED := $(patsubst %/,%,$(BUILD_DIR))
 
-SRC_FILES := $(wildcard *.js *.html)
-COMPONENT_FILES := $(wildcard $(COMPONENT_DIR_TRIMMED)/*/*.js $(COMPONENT_DIR_TRIMMED)/*/*.svelte)
+# Common environment for all targets
+COMMON_ENV := NODE_ENV=$(NODE_ENV) NODE_PORT=$(NODE_PORT) VITE_PORT=$(VITE_PORT) DEV_SECURE=$(DEV_SECURE) ROOT_DIR=$(ROOT_DIR_TRIMMED) COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) LAYOUT_DIR=$(LAYOUT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED)
 
 # Rules
 development:
-	NODE_PATH=$(NODE_PATH) NODE_ENV=$(NODE_ENV) NODE_PORT=$(NODE_PORT) SNOWPACK_PORT=$(SNOWPACK_PORT) DEV_SECURE=$(DEV_SECURE) ROOT_DIR=$(ROOT_DIR_TRIMMED) COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) LAYOUT_DIR=$(LAYOUT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) node svelte-render-server
+	$(COMMON_ENV) bun run vite-render-server.js
 
 development_secure:
-	NODE_PATH=$(NODE_PATH) NODE_ENV=$(NODE_ENV) NODE_PORT=$(NODE_PORT) SNOWPACK_PORT=$(SNOWPACK_PORT) DEV_SECURE=$(DEV_SECURE) ROOT_DIR=$(ROOT_DIR_TRIMMED) COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) LAYOUT_DIR=$(LAYOUT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) node svelte-render-server
+	$(COMMON_ENV) bun run vite-render-server.js
 
 production:
-	NODE_PATH=$(NODE_PATH) NODE_ENV=$(NODE_ENV) NODE_PORT=$(NODE_PORT) SNOWPACK_PORT=$(SNOWPACK_PORT) ROOT_DIR=$(ROOT_DIR_TRIMMED) COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) LAYOUT_DIR=$(LAYOUT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) node svelte-render-server
+	$(COMMON_ENV) bun run vite-render-server.js
+
+# Build client and server bundles for production
+build:
+	cd $(ROOT_DIR_TRIMMED) && bunx --bun vite build --outDir $(BUILD_DIR_TRIMMED)/client
+	cd $(ROOT_DIR_TRIMMED) && bunx --bun vite build --outDir $(BUILD_DIR_TRIMMED)/server --ssr $(COMPONENT_DIR_TRIMMED)
 
 
 
