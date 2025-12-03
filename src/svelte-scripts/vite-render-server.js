@@ -98,21 +98,32 @@ if (dev) {
 
 const layoutFiles = loadLayoutFiles(LAYOUT_DIR);
 
-// Collect CSS from a component and its imports by reading source files directly
+// Collect CSS by reading source files and recursively finding imports
+// This is the most reliable approach since Vite's SSR module graph isn't always populated
 async function collectComponentCss(vite, componentPath) {
   const allCss = [];
   const visited = new Set();
 
-  async function getCssForComponent(svelteUrl) {
-    // Request the CSS virtual module for this component
-    const cssUrl = `${svelteUrl}?svelte&type=style&lang.css`;
+  async function getCssForComponent(svelteFilePath) {
+    // Request the CSS virtual module for this Svelte component
+    const cssUrl = `${svelteFilePath}?svelte&type=style&lang.css`;
     try {
       const result = await vite.transformRequest(cssUrl);
       if (result?.code) {
         // Vite wraps CSS in JS like: const __vite__css = "...css..."
-        const match = result.code.match(/const __vite__css\s*=\s*"((?:[^"\\]|\\.)*)"/s);
-        if (match) {
-          return match[1]
+        // Or sometimes: export default "...css..."
+        let css = '';
+        const viteMatch = result.code.match(/const __vite__css\s*=\s*"((?:[^"\\]|\\.)*)"/s);
+        if (viteMatch) {
+          css = viteMatch[1];
+        } else {
+          const exportMatch = result.code.match(/export default\s*"((?:[^"\\]|\\.)*)"/s);
+          if (exportMatch) {
+            css = exportMatch[1];
+          }
+        }
+        if (css) {
+          return css
             .replace(/\\n/g, '\n')
             .replace(/\\t/g, '\t')
             .replace(/\\"/g, '"')
@@ -145,33 +156,32 @@ async function collectComponentCss(vite, componentPath) {
       }
       return imports;
     } catch (e) {
-      console.error(`[css-collect] Error reading imports from ${filePath}:`, e.message);
+      // File might not exist or be readable
       return [];
     }
   }
 
-  async function collectFromModule(modulePath) {
-    const normalizedPath = modulePath.split('?')[0];
+  async function collectFromComponent(filePath) {
+    const normalizedPath = filePath.split('?')[0];
     if (visited.has(normalizedPath)) return;
     visited.add(normalizedPath);
 
-    // If it's a Svelte component, get its CSS
     if (normalizedPath.endsWith('.svelte')) {
+      // Get CSS for this component
       const css = await getCssForComponent(normalizedPath);
       if (css) {
         allCss.push(css);
       }
 
-      // Get imports from the source file
+      // Get imports and recurse
       const imports = getImportsFromSource(normalizedPath);
-
       for (const importPath of imports) {
-        await collectFromModule(importPath);
+        await collectFromComponent(importPath);
       }
     }
   }
 
-  await collectFromModule(componentPath);
+  await collectFromComponent(componentPath);
   return allCss.join('\n');
 }
 
