@@ -1,7 +1,10 @@
-import { readdirSync, statSync, readFileSync } from "fs";
+import { readdirSync, statSync, readFileSync, existsSync } from "fs";
 import { resolve, parse, join } from "path";
 import { createServer as createViteServer } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+
+// Note: SSR bundles use absolute paths to celestite's svelte (configured in vite.config.js)
+// This ensures renderer and SSR components share the same svelte instance for ssr_context
 
 // Environment variables
 const {
@@ -14,9 +17,60 @@ const {
   BUILD_DIR,
 } = process.env;
 
+// Development modes use Vite dev server; staging/production use pre-built assets
 const dev = NODE_ENV === "development" || NODE_ENV === "development_secure";
 const devSecure = NODE_ENV === "development_secure" || DEV_SECURE === "true";
 const devProtocol = devSecure ? "https" : "http";
+// Staging mode uses production builds but with dev env vars loaded by Crystal
+const isProductionBuild = !dev; // staging and production both use pre-built assets
+
+// Load production manifest for asset resolution
+let manifest = null;
+if (!dev && BUILD_DIR) {
+  const manifestPath = join(BUILD_DIR, "client", ".vite", "manifest.json");
+  if (existsSync(manifestPath)) {
+    try {
+      manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+      console.log(`[vite-ssr] Loaded production manifest with ${Object.keys(manifest).length} entries`);
+    } catch (e) {
+      console.error(`[vite-ssr] Failed to load manifest: ${e.message}`);
+    }
+  } else {
+    console.warn(`[vite-ssr] No manifest found at ${manifestPath} - run build first`);
+  }
+}
+
+// Get manifest entry for a component
+function getManifestEntry(pathname) {
+  if (!manifest) return null;
+  // Manifest keys include .svelte extension: "Home.svelte", "components/Modal.svelte"
+  const entryKey = pathname.replace(/^\//, "");
+  return manifest[entryKey] || null;
+}
+
+// Recursively collect CSS files from manifest entry and its imports
+function collectCssFromManifest(entryKey, collected = new Set()) {
+  if (!manifest || !manifest[entryKey]) return [];
+  const entry = manifest[entryKey];
+
+  // Add CSS from this entry
+  if (entry.css) {
+    entry.css.forEach(css => collected.add(css));
+  }
+
+  // Recursively collect from imports
+  if (entry.imports) {
+    entry.imports.forEach(importKey => {
+      if (!collected.has(`visited:${importKey}`)) {
+        collected.add(`visited:${importKey}`);
+        collectCssFromManifest(importKey, collected);
+      }
+    });
+  }
+
+  // Filter out visited markers and return just CSS paths
+  return Array.from(collected).filter(item => !item.startsWith("visited:"));
+}
 
 // Shared Vite plugin configuration
 function getSveltePlugin() {
@@ -205,8 +259,21 @@ async function collectComponentCss(vite, componentPath) {
   return cssResults.filter(css => css).join('\n');
 }
 
+// Find the svelte runtime entry in manifest
+function findSvelteEntry() {
+  if (!manifest) return null;
+  // Look for the __svelte entry we created during build
+  // The key is the source path, but the name is "__svelte"
+  for (const entry of Object.values(manifest)) {
+    if (entry.name === "__svelte" && entry.file) {
+      return entry.file;
+    }
+  }
+  return null;
+}
+
 // Generate client-side hydration script
-function generateClientScript(pathname, context, isDev) {
+function generateClientScript(pathname, context, isDev, manifestEntry) {
   if (isDev) {
     return `
       <script type="module">
@@ -228,13 +295,19 @@ function generateClientScript(pathname, context, isDev) {
       </script>
     `;
   } else {
-    // Production: load from bundled assets
+    // Production: load from bundled assets using manifest
+    const jsFile = manifestEntry?.file || pathname.replace(/^\//, "").replace(/\.svelte$/, ".js");
+    const svelteFile = findSvelteEntry();
+
+    if (!svelteFile) {
+      console.error("[vite-ssr] No __svelte entry in manifest - client hydration will fail");
+    }
+
+    // Assets built to BUILD_DIR/client/ are served at /client/ by Kemal
     return `
       <script type="module">
-        import { hydrate } from 'svelte';
-
-        const module = await import("/client${pathname.replace(/\.svelte$/, ".js")}");
-        const App = module.default;
+        import { hydrate } from '/client/${svelteFile}';
+        import App from '/client/${jsFile}';
 
         hydrate(App, {
           target: document.querySelector("#celestite-app"),
@@ -324,8 +397,13 @@ async function handleRender(req) {
   // Build the response HTML
   let injectHead = ssr.head || "";
 
-  // In dev mode, collect and inline CSS to prevent flash of unstyled content
+  // Get manifest entry for this component (production only)
+  // Manifest keys include .svelte extension: "Coin.svelte", "components/Modal.svelte"
+  const entryKey = pathname.replace(/^\//, "");
+  const manifestEntry = getManifestEntry(pathname);
+
   if (dev && vite) {
+    // Dev mode: collect and inline CSS to prevent flash of unstyled content
     try {
       const css = await collectComponentCss(vite, componentPath);
       if (css) {
@@ -334,9 +412,16 @@ async function handleRender(req) {
     } catch (e) {
       console.error('[vite-ssr] Failed to collect CSS:', e.message);
     }
+  } else if (manifest) {
+    // Production: inject CSS links from manifest
+    // Assets built to BUILD_DIR/client/ are served at /client/ by Kemal
+    const cssFiles = collectCssFromManifest(entryKey);
+    for (const cssFile of cssFiles) {
+      injectHead += `<link rel="stylesheet" href="/client/${cssFile}">`;
+    }
   }
 
-  const clientScript = generateClientScript(pathname, context, dev);
+  const clientScript = generateClientScript(pathname, context, dev, manifestEntry);
 
   const html = layout
     .replace("<!-- CELESTITE HEAD -->", injectHead)

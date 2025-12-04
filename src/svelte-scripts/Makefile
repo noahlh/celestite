@@ -1,6 +1,6 @@
 # Init
 .EXPORT_ALL_VARIABLES:
-.PHONY: development development_secure production build
+.PHONY: development development_secure staging production build
 
 # Variables
 ROOT_DIR ?= $(abspath ../../)
@@ -28,10 +28,15 @@ development_secure:
 production:
 	$(COMMON_ENV) bun run vite-render-server.js
 
+# Staging: uses production builds but with dev env vars (for testing production builds locally)
+staging:
+	$(COMMON_ENV) bun run vite-render-server.js
+
 # Build client and server bundles for production
+# Uses vite.config.js which auto-discovers entry points from COMPONENT_DIR
 build:
-	cd $(ROOT_DIR_TRIMMED) && bunx --bun vite build --outDir $(BUILD_DIR_TRIMMED)/client
-	cd $(ROOT_DIR_TRIMMED) && bunx --bun vite build --outDir $(BUILD_DIR_TRIMMED)/server --ssr $(COMPONENT_DIR_TRIMMED)
+	cd $(ROOT_DIR_TRIMMED) && COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) bunx --bun vite build --config $(CURDIR)/../../vite.config.js
+	cd $(ROOT_DIR_TRIMMED) && COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) bunx --bun vite build --config $(CURDIR)/../../vite.config.js --ssr
 
 
 
