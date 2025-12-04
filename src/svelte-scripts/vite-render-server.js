@@ -204,11 +204,26 @@ async function collectComponentCss(componentPath) {
           }
         }
         if (css) {
+          // Unescape the CSS string
           css = css
+            .replace(/\\r/g, '')   // Remove carriage returns
             .replace(/\\n/g, '\n')
             .replace(/\\t/g, '\t')
             .replace(/\\"/g, '"')
             .replace(/\\\\/g, '\\');
+
+          // Validate this is actually CSS, not component source
+          // Vite returns full component source for styleless components
+          const trimmed = css.trim();
+          if (trimmed.startsWith('<') ||
+              trimmed.startsWith('<!--') ||
+              trimmed.includes('<script>') ||
+              trimmed.includes('<svg')) {
+            // This is component markup, not CSS - skip it
+            cssCache.set(svelteFilePath, '');
+            return '';
+          }
+
           cssCache.set(svelteFilePath, css);
           return css;
         }
