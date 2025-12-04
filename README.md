@@ -2,9 +2,9 @@
 
 # celestite
 
-<img src="https://crystal-lang.org/assets/media/crystal_icon.svg?sanitize=1" height=21> Crystal + <img src="https://upload.wikimedia.org/wikipedia/commons/1/1b/Svelte_Logo.svg" height=16> Svelte = :zap:
+<img src="https://crystal-lang.org/assets/media/crystal_icon.svg?sanitize=1" height=21> Crystal + <img src="https://upload.wikimedia.org/wikipedia/commons/1/1b/Svelte_Logo.svg" height=16> Svelte 5 = :zap:
 
-Celestite allows you to use the full power of [Svelte](https://svelte.dev) reactive components in your [Crystal](https://crystal-lang.org) web apps. It's a drop-in replacement for your view layer -- no more need for intermediate `.ecr` templates. With celestite, you write your backend server code in Crystal, your frontend client code in JavaScript & HTML, and everything works together seamlessly...and fast.
+Celestite allows you to use the full power of [Svelte 5](https://svelte.dev) reactive components in your [Crystal](https://crystal-lang.org) web apps. It's a drop-in replacement for your view layer -- no more need for intermediate `.ecr` templates. With celestite, you write your backend server code in Crystal, your frontend client code in JavaScript & HTML, and everything works together seamlessly...and fast.
 
 ## Introduction
 
@@ -12,19 +12,12 @@ Celestite allows you to use the full power of [Svelte](https://svelte.dev) react
 
 ### Requirements
 
-- Crystal 0.35.1+
-- Yarn 1.12+
-- Node 10+
-
-The render server was built using node 10.15.3 (in particular it uses the WHATWG URL Standard, which was added in Node 7+.) It doesn't need to do this, strictly-speaking, and if there's a compelling reason to support earlier versions of Node I'm happy to make this change.)
+- Crystal 1.0.0+
+- Bun 1.0+ (for the SSR render server)
 
 ## Installation
 
-#### THIS IS PREVIEW / EARLY ALPHA SOFTWARE
-
-**This is not much more than a proof-of-concept at the moment, but it does work! Standard warnings apply - it will likely break/crash in spectacular and ill-timed glory, so don't poke it, feed it past midnight, or use it for anything mission-critical (yet).**
-
-Celestite has been developed / tested with the [Amber](https://amberframework.org) web framework, but designed to work standalone as well. There's also no reason it won't work with [Lucky](https://luckyframework.org/), [Kemal](http://kemalcr.com/), [Athena](https://athenaframework.org), etc. (but no work integrating with those has been done yet.) The steps below assume you'll be working with Amber.
+Celestite has been developed and tested with the [Amber](https://amberframework.org) web framework, but designed to work standalone as well. It also works with [Kemal](http://kemalcr.com/) and other Crystal web frameworks.
 
 ### 1. Add celestite to your application's `shard.yml` and run `shards install`
 
@@ -32,197 +25,152 @@ Celestite has been developed / tested with the [Amber](https://amberframework.or
 dependencies:
   celestite:
     github: noahlh/celestite
-    version: ~> 0.1.3
+    version: ~> 0.2.0
 ```
 
-### 2. Include the helper `Celestite::Adapter::Amber` in your `application_controller.cr`
+The postinstall hook will automatically install JavaScript dependencies via Bun.
 
-This adds the `celestite_render` macro.
+### 2. Include the helper in your controller
+
+For Amber:
+```crystal
+# application_controller.cr
+
+class ApplicationController < Amber::Controller::Base
+  include Celestite::Adapter::Amber
+end
+```
+
+For Kemal:
+```crystal
+require "celestite"
+include Celestite::Adapter::Kemal
+```
+
+### 3. Add initialization code
+
+Create an initializer file (e.g., `/config/initializers/celestite.cr`):
 
 ```crystal
-  # application_controller.cr
+require "celestite"
 
-  require "jasper_helpers"
-
-  class ApplicationController < Amber::Controller::Base
-    include JasperHelpers
-+   include Celestite::Adapter::Amber
-  end
+Celestite.initialize(
+  engine: Celestite::Engine::Svelte,
+  component_dir: "#{Dir.current}/src/views/",
+  build_dir: "#{Dir.current}/public/celestite/",
+  port: 4000,
+  vite_port: 5173,
+)
 ```
 
-### 3. Add `celestite_amber_init.cr` to `/config/initializers`
+[See example config](/config/celestite_amber_init.example.cr) for more options.
 
-[An example](/config/celestite_amber_init.example.cr) is provided. You can name this file whatever you want, just so long as it gets called upon initialization.
+### 4. Add a static route for your build_dir
 
-### 4. Add an `_error.svelte` to your views directory
-
-This is required for the time being because Sapper expects it. If it's missing, your app will still work, but there will be some weirdness with CSS rendering (trust me - this cost me an evening ;)
-
-```html
-<script>
-  export let status;
-  export let error;
-</script>
-
-<h1>{status}</h1>
-<p>{error.message}</p>
-```
-
-### 4. Add a static route for your build_dir to Amber's static pipeline
-
-This is because of a slight hitch with how Svelte works behind the scenes (via [Sapper](https://sapper.svelte.dev)), but essentially: the client needs to be able to access the relevant JS files in /client, yet Sapper needs complete control over that directory (it wipes it with each new build). So we simultaneously give it its own directory and also make it available via the root path.
-
+For Amber:
 ```crystal
- # routes.cr
+# routes.cr
 
- pipeline :static do
-   plug Amber::Pipe::Error.new
-   plug Amber::Pipe::Static.new("./public")
-+  plug Amber::Pipe::Static.new("./public/celestite")
- end
+pipeline :static do
+  plug Amber::Pipe::Error.new
+  plug Amber::Pipe::Static.new("./public")
+  plug Amber::Pipe::Static.new("./public/celestite")
+end
 ```
-
-### And finally...
 
 ### 5. Add your `.svelte` files and start building!
 
-A note on naming: make sure you follow Sapper's [file naming rules](https://sapper.svelte.dev/docs#File_naming_rules). Hint: the root component should be named `index.svelte` (all lowercase).
+Name your root component `index.svelte` (all lowercase).
 
-## Usage details
+## Usage
 
-**`celestite_render`**`(context : Celestite::Context = nil, path : String? = nil, template : String? = nil)`
-
-Performs the render. This is to be called where you'd normally call `render` in your controllers. It doesn't need any parameters by default (it automatically extracts the path of the method calling it based on your Amber routes), but you may use the following optional parameters:
-
-- `context : Celestite::Context`
-
-  Celestite uses a Hash literal called `Celestite::Context`. Any variables you'd like available in your components go in here, using a Symbol key of the desired name.
-
-  So if you want to access `example_crystal_data` in your vue component, assign the relevant value to `my_context[:example_crystal_data]`. See example below for details
-
-  This is acheived using Sapper's [session-seeding](https://sapper.svelte.dev/docs#Seeding_session_data) mechanism.
-
-- `path : String?`
-
-  If you need to manually specify which path you're rending (i.e. you're not in Amber), you can pass in a string parameter. In Amber this will be assigned a default value equal to the current Amber route the controller method is handling.
-
-- `template : String?`
-
-  **(Not implemented yet)** Which layout/template you'd like to render the component in. Will use a default template specified in the init file if none specified on render.
-
-## Example controller
+### celestite_render
 
 ```crystal
-# home_controller.cr
+celestite_render(component : String?, context : Celestite::Context?, layout : String?)
+```
 
+Call this where you'd normally call `render` in your controllers.
+
+- `component` - The Svelte component to render (without `.svelte` extension)
+- `context` - A `Celestite::Context` hash with data to pass to your component
+- `layout` - Optional HTML layout file from your layout_dir
+
+### Example Controller
+
+```crystal
 class HomeController < ApplicationController
   def index
     data = 1 + 1
     context = Celestite::Context{:data => data}
-    celestite_render(context)
+    celestite_render("Home", context)
   end
 end
 ```
 
-## Server vs client rendering (Node/JavaScript)
+### Accessing Context in Svelte
 
-Your `.svelte` components will automatically be rendered server-side before being sent to the client. This is usually seamless, but you'll need to be aware of any code (or libraries) that rely on browser-specific APIs (such as `document` or `window`). This will throw an error when the components are rendered in the context of node (vs the browser).
+```svelte
+<script>
+  let { context } = $props();
+</script>
 
-To get around this, you can import Sapper's `onMount()` function. Any function wrapped in `onMount()` will be rendered in the (browser) client only.
+<h1>Result: {context.data}</h1>
+```
 
-[You can read more about server-side rendering considerations here.](https://sapper.svelte.dev/docs#Server-side_rendering)
+## Server vs Client Rendering
+
+Your `.svelte` components are automatically rendered server-side before being sent to the client, then hydrated on the client for interactivity.
+
+Code that relies on browser-specific APIs (like `document` or `window`) must be wrapped in Svelte's `onMount()`:
+
+```svelte
+<script>
+  import { onMount } from 'svelte';
+
+  onMount(() => {
+    // Browser-only code here
+    console.log(window.location);
+  });
+</script>
+```
 
 ## HTTPS/SSL Support for Development
 
-Celestite supports running the Snowpack dev server over HTTPS, which is useful when testing with tunneled connections (ngrok, localtunnel, etc.) or when your main application server requires HTTPS.
+Celestite supports running the Vite dev server over HTTPS, useful for tunneled connections (ngrok, localtunnel, etc.).
 
-### Setting up SSL Certificates
+### Setup
 
-#### 1. Install mkcert
+1. Install mkcert:
+   ```bash
+   brew install mkcert  # macOS
+   ```
 
-First, install mkcert for generating locally-trusted development certificates:
+2. Install the local CA:
+   ```bash
+   sudo mkcert -install
+   ```
 
-```bash
-# macOS
-brew install mkcert
+3. Generate certificates:
+   ```bash
+   mkcert -key-file dev.key -cert-file dev.crt localhost 127.0.0.1 ::1
+   ```
 
-# Linux
-# See https://github.com/FiloSottile/mkcert for instructions
-```
-
-#### 2. Install the local Certificate Authority
-
-**Important:** This step must be run to trust the certificates system-wide:
-
-```bash
-sudo mkcert -install
-```
-
-This will install mkcert's CA in your system trust store. You'll need to enter your password. Without this step, browsers will show certificate warnings.
-
-#### 3. Generate SSL Certificates
-
-In your project root directory, generate the certificates that Snowpack will use:
-
-```bash
-mkcert -key-file snowpack.key -cert-file snowpack.crt localhost 127.0.0.1 ::1
-```
-
-This creates `snowpack.key` and `snowpack.crt` files. These are already included in `.gitignore` and should not be committed to version control.
-
-### Using HTTPS Mode
-
-To enable HTTPS in development, set `dev_secure: true` in your Celestite configuration:
-
-```crystal
-Celestite.initialize(
-  dev_secure: true,  # Enables HTTPS for Snowpack dev server
-  # ... other config
-)
-```
-
-Alternatively, you can conditionally enable it based on environment:
-
-```crystal
-env = ENV["ENV"] || "development"
-
-Celestite.initialize(
-  env: env,
-  dev_secure: env == "development_secure",
-  # ... other config
-)
-```
-
-Then run your app with:
-
-```bash
-ENV=development_secure crystal run src/your_app.cr
-```
-
-### How It Works
-
-When `dev_secure: true` is set:
-
-- Snowpack dev server runs on HTTPS instead of HTTP
-- Client-side code dynamically constructs URLs based on the current hostname (not hardcoded to localhost)
-- WebSocket connections (HMR) use WSS instead of WS
-- Works seamlessly with tunneled connections using the tunnel's hostname
-
-### Default Behavior
-
-By default, `dev_secure` is `false` and Celestite runs in standard HTTP mode. Only enable HTTPS when:
-
-- Testing over tunneled connections (ngrok, etc.)
-- Your main application server requires HTTPS
-- Testing SSL-specific features
+4. Enable in configuration:
+   ```crystal
+   Celestite.initialize(
+     dev_secure: true,
+     # ... other config
+   )
+   ```
 
 ## Production Builds
 
-For production/staging environments, Svelte components need to be pre-built using Vite. The build generates both client-side bundles (with content hashes for caching) and server-side SSR modules.
+For production, Svelte components must be pre-built using Vite.
 
-### Building Manually
+### Building
 
-Run from your app's root directory (where celestite is installed as a shard):
+From your app's root directory:
 
 ```bash
 # Build client bundles
@@ -234,72 +182,60 @@ COMPONENT_DIR=/path/to/views BUILD_DIR=/path/to/public/celestite \
   bunx --bun vite build --config /path/to/lib/celestite/vite.config.js --ssr
 ```
 
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `COMPONENT_DIR` | Path to your Svelte component files |
-| `BUILD_DIR` | Output directory for built assets |
+Or use the Makefile target:
+```bash
+cd /path/to/lib/celestite/src/svelte-scripts
+make build COMPONENT_DIR=/path/to/views BUILD_DIR=/path/to/public/celestite
+```
 
 ### Build Output
 
-The build produces:
-- `BUILD_DIR/client/` - Client-side JS/CSS with content hashes (e.g., `Component-abc123.js`)
+- `BUILD_DIR/client/` - Client-side JS/CSS with content hashes
 - `BUILD_DIR/client/.vite/manifest.json` - Asset manifest for hydration
 - `BUILD_DIR/server/` - SSR modules for server-side rendering
 
-Each component gets its own hashed file, enabling granular caching - only changed components need to be re-downloaded by clients.
+### Testing Production Builds Locally
 
-### Testing Production Builds Locally (Staging Mode)
+```bash
+NODE_ENV=production NODE_PORT=4000 \
+  COMPONENT_DIR=/path/to/views \
+  LAYOUT_DIR=/path/to/views/layouts \
+  BUILD_DIR=/path/to/public/celestite \
+  bun run /path/to/lib/celestite/src/svelte-scripts/vite-render-server.js
+```
 
-To test production builds without deploying:
+## Configuration Options
 
-1. Run the builds as shown above
-2. Start the render server in production mode:
-   ```bash
-   NODE_ENV=production NODE_PORT=4000 \
-     COMPONENT_DIR=/path/to/views \
-     LAYOUT_DIR=/path/to/views/layouts \
-     BUILD_DIR=/path/to/public/celestite \
-     bun run /path/to/lib/celestite/src/svelte-scripts/vite-render-server.js
-   ```
-3. Run your Crystal app with `ENV=staging`
-
-## Project status
-
-My goal/philosophy is to release early, release often, and get as much user feedback as early in the process as possible, so even though the perfectionist in me would like to spend another 6 years improving this, by then it'll be 2024 and who knows we might all be living underwater. No time like the present.
+| Option | Default | Description |
+|--------|---------|-------------|
+| `engine` | `Svelte` | Rendering engine (currently only Svelte) |
+| `component_dir` | - | Path to your Svelte components |
+| `layout_dir` | - | Path to HTML layout templates |
+| `build_dir` | - | Output directory for production builds |
+| `port` | `4000` | Bun SSR server port |
+| `vite_port` | `5173` | Vite dev server port (development only) |
+| `dev_secure` | `false` | Enable HTTPS for dev server |
+| `disable_a11y_warnings` | `false` | Suppress Svelte accessibility warnings |
 
 ## Roadmap
 
-Short-term goals:
+- [x] Svelte 5 support with Vite
+- [x] Hot Module Reloading (HMR)
+- [x] Production builds with content hashing
+- [ ] SvelteKit integration
+- [ ] Example/demo project
 
-- [x] Release the embarrassing 0.1.0 version (originally supported Vue)
-- [x] Fix reloading issues (not everything restarts properly)
-- [x] Figure out Hot Module Reloading (HMR)
-- [x] Add support for Svelte (released in 0.1.2)
-- [ ] Get usage --> expose bugs
-- [ ] Get example / demo project live
-- [ ] Switch over to SveltKit when it's live
+## Contributing
 
-Longer-term goals:
-
-- Performance & code cleanliness improvements
-- Remove need for a separate node process / http (evaluate JS in crystal?)
-
-## Contributions / critique wanted!
-
-This has been a solo project of mine and I would love nothing more than to get feedback on the code / improvements / contributions. I've found by far the best way to learn and level-up development skills is to have others review code that you've wrestled with.
-
-That is to say, don't hold back. Report things that are broken, help improve some of the code, or even just fix some typos. Everyone (at all skill levels) is welcome.
+Contributions are welcome! This is an open source project and feedback, bug reports, and PRs are appreciated.
 
 1. Fork it (<https://github.com/noahlh/celestite/fork>)
-2. Create your feature/bugfix branch (`git checkout -b omg-this-fixed-so-many-bugs`)
-3. Make magic (and don't forget to write tests!)
-4. Commit your changes (`git commit -am 'Made a fix!'`)
-5. Push to the branch (`git push origin omg-this-fixed-so-many-bugs`)
-6. Create a new Pull Request
-7. ::party::
+2. Create your feature branch (`git checkout -b my-feature`)
+3. Write tests!
+4. Commit your changes (`git commit -am 'Add feature'`)
+5. Push to the branch (`git push origin my-feature`)
+6. Create a Pull Request
 
 ## Contributors
 
-- Noah Lehmann-Haupt (nlh@nlh.me / [noahlh](https://github.com/noahlh)) - creator, maintainer.
+- Noah Lehmann-Haupt (nlh@nlh.me / [noahlh](https://github.com/noahlh)) - creator, maintainer

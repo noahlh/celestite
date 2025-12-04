@@ -1,24 +1,29 @@
-/src/svelte-scripts/__sapper__/
-/src/svelte-scripts/node_modules/
-/src/svelte-scripts/node_modules/@sapper
+# Crystal build artifacts
 /lib/
 /bin/
 /.shards/
 *.dwarf
+
+# Libraries don't need dependency lockfiles
+/shard.lock
+package-lock.json
+bun.lock
+
+# Node modules
+/node_modules/
+
+# IDE and editor files
+/.vscode/
 *.sublime-project
 *.sublime-workspace
 
-# Libraries don't need dependency lock
-/shard.lock
-package-lock.json
-
-# node / yarn-related files
-/node_modules/
-
-# vscode files
-/.vscode/
+# macOS
+.DS_Store
 
 # SSL certificates for local development
-snowpack.key
-snowpack.crt
+*.key
+*.crt
+
+# Vite build output (when testing locally)
+/dist/
 
