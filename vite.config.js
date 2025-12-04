@@ -8,6 +8,9 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const celestiteSveltePath = resolve(__dirname, "node_modules/svelte");
 
+// Configuration from environment
+const disableA11yWarnings = process.env.DISABLE_A11Y_WARNINGS === "true";
+
 // This config is used for production builds
 // Runtime dev configuration is handled programmatically in vite-render-server.js
 
@@ -65,6 +68,13 @@ export default defineConfig(({ command, isSsrBuild }) => {
           dev: isDev,
           ...(isSsrBuild ? { generate: "server" } : {}),
         },
+        // Optionally suppress a11y warnings for internal tools
+        ...(disableA11yWarnings && {
+          onwarn: (warning, handler) => {
+            if (warning.code && warning.code.startsWith("a11y_")) return;
+            handler(warning);
+          },
+        }),
       }),
     ],
     build: {

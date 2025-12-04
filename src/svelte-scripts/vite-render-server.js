@@ -15,7 +15,10 @@ const {
   COMPONENT_DIR,
   LAYOUT_DIR,
   BUILD_DIR,
+  DISABLE_A11Y_WARNINGS = "false",
 } = process.env;
+
+const disableA11yWarnings = DISABLE_A11Y_WARNINGS === "true";
 
 // Development modes use Vite dev server; staging/production use pre-built assets
 const dev = NODE_ENV === "development" || NODE_ENV === "development_secure";
@@ -74,11 +77,21 @@ function collectCssFromManifest(entryKey, collected = new Set()) {
 
 // Shared Vite plugin configuration
 function getSveltePlugin() {
-  return svelte({
+  const options = {
     compilerOptions: {
       dev,
     },
-  });
+  };
+
+  // Optionally suppress a11y warnings for internal tools
+  if (disableA11yWarnings) {
+    options.onwarn = (warning, handler) => {
+      if (warning.code && warning.code.startsWith("a11y_")) return;
+      handler(warning);
+    };
+  }
+
+  return svelte(options);
 }
 
 // Load layout files into memory
@@ -167,7 +180,7 @@ if (dev && vite) {
   });
 }
 
-async function collectComponentCss(vite, componentPath) {
+async function collectComponentCss(componentPath) {
   const visited = new Set();
 
   async function getCssForComponent(svelteFilePath) {
@@ -405,7 +418,7 @@ async function handleRender(req) {
   if (dev && vite) {
     // Dev mode: collect and inline CSS to prevent flash of unstyled content
     try {
-      const css = await collectComponentCss(vite, componentPath);
+      const css = await collectComponentCss(componentPath);
       if (css) {
         injectHead += `<style>${css}</style>`;
       }

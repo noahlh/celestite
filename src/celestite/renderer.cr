@@ -38,6 +38,7 @@ module Celestite
             args << "COMPONENT_DIR=#{@config.component_dir} " if @config.component_dir
             args << "LAYOUT_DIR=#{@config.layout_dir} " if @config.layout_dir
             args << "BUILD_DIR=#{@config.build_dir} " if @config.build_dir
+            args << "DISABLE_A11Y_WARNINGS=#{@config.disable_a11y_warnings} "
           end
           str << "make -r " << @config.env << " "
           str << common_args
