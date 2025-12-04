@@ -216,6 +216,55 @@ By default, `dev_secure` is `false` and Celestite runs in standard HTTP mode. On
 - Your main application server requires HTTPS
 - Testing SSL-specific features
 
+## Production Builds
+
+For production/staging environments, Svelte components need to be pre-built using Vite. The build generates both client-side bundles (with content hashes for caching) and server-side SSR modules.
+
+### Building Manually
+
+Run from your app's root directory (where celestite is installed as a shard):
+
+```bash
+# Build client bundles
+COMPONENT_DIR=/path/to/views BUILD_DIR=/path/to/public/celestite \
+  bunx --bun vite build --config /path/to/lib/celestite/vite.config.js
+
+# Build SSR bundles
+COMPONENT_DIR=/path/to/views BUILD_DIR=/path/to/public/celestite \
+  bunx --bun vite build --config /path/to/lib/celestite/vite.config.js --ssr
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `COMPONENT_DIR` | Path to your Svelte component files |
+| `BUILD_DIR` | Output directory for built assets |
+
+### Build Output
+
+The build produces:
+- `BUILD_DIR/client/` - Client-side JS/CSS with content hashes (e.g., `Component-abc123.js`)
+- `BUILD_DIR/client/.vite/manifest.json` - Asset manifest for hydration
+- `BUILD_DIR/server/` - SSR modules for server-side rendering
+
+Each component gets its own hashed file, enabling granular caching - only changed components need to be re-downloaded by clients.
+
+### Testing Production Builds Locally (Staging Mode)
+
+To test production builds without deploying:
+
+1. Run the builds as shown above
+2. Start the render server in production mode:
+   ```bash
+   NODE_ENV=production NODE_PORT=4000 \
+     COMPONENT_DIR=/path/to/views \
+     LAYOUT_DIR=/path/to/views/layouts \
+     BUILD_DIR=/path/to/public/celestite \
+     bun run /path/to/lib/celestite/src/svelte-scripts/vite-render-server.js
+   ```
+3. Run your Crystal app with `ENV=staging`
+
 ## Project status
 
 My goal/philosophy is to release early, release often, and get as much user feedback as early in the process as possible, so even though the perfectionist in me would like to spend another 6 years improving this, by then it'll be 2024 and who knows we might all be living underwater. No time like the present.
