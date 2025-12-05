@@ -1,85 +1,35 @@
-# Security Measures
+# Security
 
-## NPM Supply Chain Attack Protection
+## Reporting Security Issues
 
-This project has protections against npm supply chain attacks like SHA1-HULUD.
+If you discover a security vulnerability, please report it by emailing the maintainer directly rather than opening a public issue.
 
-### Protection Measures
+## Supply Chain Security
 
-1. **Install Scripts Disabled** (`.npmrc`)
-   - All npm install scripts (preinstall, install, postinstall, prepare) are disabled by default
-   - This prevents malicious packages from executing arbitrary code during `npm install`
-   - Configuration: `ignore-scripts=true` in `.npmrc`
+This project takes supply chain security seriously:
 
-2. **Audit Tool** (`scripts/npm-audit-scripts.sh`)
-   - Run `./scripts/npm-audit-scripts.sh` to see which packages want to run install scripts
-   - Helps identify suspicious packages before enabling their scripts
-   - Shows exactly what commands would be executed
+### Dependency Management
 
-### How to Use
+- We use minimal dependencies to reduce attack surface
+- Dependencies are regularly updated via Dependabot
+- The `.npmrc` file disables automatic install scripts as an additional precaution
 
-#### Normal Development
+### Best Practices for Users
 
-```bash
-# Install packages safely (scripts won't run)
-npm install
+1. **Review dependencies**: Check package repositories before adding new dependencies
+2. **Keep updated**: Regularly update dependencies to get security patches
+3. **Use lockfiles in your apps**: While this library doesn't include a lockfile (libraries shouldn't), your application should use one
 
-# Add a new package safely
-npm install <package-name>
+### If You Suspect a Compromised Package
 
-# Audit what scripts exist in your dependencies
-./scripts/npm-audit-scripts.sh
-```
+1. Stop immediately and don't run additional install commands
+2. Check your GitHub security logs: https://github.com/settings/security-log
+3. Rotate any potentially exposed credentials
+4. Remove `node_modules`, clear caches, and reinstall from a known-good state
+5. Report the issue to the package maintainer and npm/bun
 
-#### When You Need to Run Install Scripts
+## Additional Resources
 
-Some legitimate packages require install scripts to build native modules (e.g., node-gyp packages). If you trust a package and need its install scripts:
-
-```bash
-# For a specific package
-npm rebuild <package-name> --ignore-scripts=false
-
-# Or temporarily disable protection for one install
-npm install <package-name> --ignore-scripts=false
-```
-
-#### Best Practices
-
-1. **Review before installing**: Check the package's repository and install scripts before adding new dependencies
-2. **Audit regularly**: Run `./scripts/npm-audit-scripts.sh` after adding new packages
-3. **Keep dependencies updated**: Regular updates include security patches
-4. **Use `npm audit`**: Run periodically to check for known vulnerabilities
-
-### Attack Detection
-
-Watch for these red flags when auditing:
-- Scripts named `setup_bun.js` or `bun_environment.js`
-- Scripts that download additional code
-- Scripts that access environment variables or `.git` directory
-- Scripts that make network requests during install
-- Obfuscated or minified install scripts
-
-### Additional Security Tools
-
-Consider using:
-- **Socket.dev**: Real-time npm package analysis
-- **StepSecurity**: Supply chain security platform
-- **Dependabot**: Automated dependency updates (GitHub)
-- **npm audit**: Built-in vulnerability scanner
-
-### References
-
-- [SHA1-HULUD Attack Details](https://www.stepsecurity.io/blog/sha1-hulud-the-second-coming-zapier-ens-domains-and-other-prominent-npm-packages-compromised)
-- [npm Scripts Documentation](https://docs.npmjs.com/cli/v10/using-npm/scripts)
-- [Supply Chain Security Best Practices](https://slsa.dev/)
-
-### Emergency Response
-
-If you suspect a compromised package:
-
-1. **Stop immediately**: Don't run any more npm commands
-2. **Check GitHub security logs**: https://github.com/settings/security-log
-3. **Rotate credentials**: GitHub tokens, npm tokens, API keys, SSH keys
-4. **Scan for malicious files**: `find . -name "*setup_bun*" -o -name "*bun_environment*"`
-5. **Clean install**: Remove `node_modules`, clear npm cache, reinstall
-6. **Report**: File an issue with npm and the package maintainer
+- [Socket.dev](https://socket.dev) - Package security analysis
+- [Dependabot](https://github.com/dependabot) - Automated dependency updates
+- [SLSA](https://slsa.dev/) - Supply chain security best practices
