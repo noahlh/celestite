@@ -1,40 +1,42 @@
 # Init
 .EXPORT_ALL_VARIABLES:
-.PHONY: build production test development clean
-
-# Paths
-NODE_PATH := $(abspath ../../node_modules)
-ROOT_PATH := $(abspath ../../)
+.PHONY: development development_secure staging production build
 
 # Variables
-SAPPER_BUILD_DIR ?= $(abspath ./__sapper__/build)
-SAPPER_BUILD_DIR_TRIMMED := $(patsubst %/,%,$(SAPPER_BUILD_DIR))
+ROOT_DIR ?= $(abspath ../../)
+ROOT_DIR_TRIMMED := $(patsubst %/,%,$(ROOT_DIR))
 
-SAPPER_ROUTES ?= $(abspath ./)
-# SAPPER_ROUTES_TRIMMED := $(patsubst %/,%,$(SAPPER_ROUTES))
-SAPPER_ROUTES_TRIMMED := $(abspath $(SAPPER_ROUTES))
+COMPONENT_DIR ?= $(abspath ./components)
+COMPONENT_DIR_TRIMMED := $(patsubst %/,%,$(COMPONENT_DIR))
 
-SAPPER_SRC ?= $(abspath ./)
-SAPPER_SRC_TRIMMED := $(patsubst %/,%,$(SAPPER_SRC))
+LAYOUT_DIR ?= $(abspath ./components/layouts)
+LAYOUT_DIR_TRIMMED := $(patsubst %/,%,$(LAYOUT_DIR))
 
-SAPPER_OUTPUT := $(abspath $(ROOT_PATH)/src/svelte-scripts/node_modules/@sapper)
+BUILD_DIR ?= $(abspath ./build)
+BUILD_DIR_TRIMMED := $(patsubst %/,%,$(BUILD_DIR))
 
-SAPPER_SRC_FILES := $(wildcard *.js *.html)
-SAPPER_ROUTE_FILES := $(wildcard $(SAPPER_ROUTES_TRIMMED)/*/*.js $(SAPPER_ROUTES_TRIMMED)/*/*.svelte)
+# Common environment for all targets
+COMMON_ENV := NODE_ENV=$(NODE_ENV) NODE_PORT=$(NODE_PORT) VITE_PORT=$(VITE_PORT) DEV_SECURE=$(DEV_SECURE) ROOT_DIR=$(ROOT_DIR_TRIMMED) COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) LAYOUT_DIR=$(LAYOUT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED)
 
 # Rules
-build: $(SAPPER_BUILD_DIR_TRIMMED)/.make.build
-
-production test: build
-	NODE_ENV=$(NODE_ENV) NODE_PATH=$(NODE_PATH) node $(SAPPER_BUILD_DIR_TRIMMED)
-
 development:
-	$(NODE_PATH)/sapper/sapper dev --no-hot -p $(NODE_PORT) --routes $(SAPPER_ROUTES_TRIMMED) --src $(ROOT_PATH)/src/svelte-scripts/ --output $(SAPPER_OUTPUT) --build-dir $(SAPPER_BUILD_DIR_TRIMMED)
+	$(COMMON_ENV) bun run vite-render-server.js
 
-$(SAPPER_BUILD_DIR_TRIMMED)/.make.build: $(SAPPER_SRC_FILES) $(SAPPER_ROUTE_FILES)
-	$(NODE_PATH)/sapper/sapper build $(SAPPER_BUILD_DIR_TRIMMED) -p $(NODE_PORT) --routes $(SAPPER_ROUTES_TRIMMED) --src $(SAPPER_SRC_TRIMMED) --output $(SAPPER_OUTPUT)
-	touch $(SAPPER_BUILD_DIR_TRIMMED)/.make.build
+development_secure:
+	$(COMMON_ENV) bun run vite-render-server.js
 
-clean:
-	rm -rf $(SAPPER_BUILD_DIR_TRIMMED)/.make.build
+production:
+	$(COMMON_ENV) bun run vite-render-server.js
+
+# Staging: uses production builds but with dev env vars (for testing production builds locally)
+staging:
+	$(COMMON_ENV) bun run vite-render-server.js
+
+# Build client and server bundles for production
+# Uses vite.config.js which auto-discovers entry points from COMPONENT_DIR
+build:
+	cd $(ROOT_DIR_TRIMMED) && COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) bunx --bun vite build --config $(CURDIR)/../../vite.config.js
+	cd $(ROOT_DIR_TRIMMED) && COMPONENT_DIR=$(COMPONENT_DIR_TRIMMED) BUILD_DIR=$(BUILD_DIR_TRIMMED) bunx --bun vite build --config $(CURDIR)/../../vite.config.js --ssr
+
+
 

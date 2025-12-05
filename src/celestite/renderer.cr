@@ -1,32 +1,49 @@
-##
-# The Renderer class does the heavy lifting of actually calling the node process to render
-##
-
 require "http/client"
 require "log"
 require "colorize"
 
+##
+# The Renderer class does the heavy lifting of actually calling the node process to render
+##
+
 module Celestite
   module Renderer
-    @component_dir : String?
-    @routes_file : String?
-    @port : Int32
-    @template_dir : String?
-    @default_template : String?
-    @build_dir : String?
-    @build_dir_public_path : String?
-    @client : HTTP::Client
-
+    getter config : Config
     getter node_process : Process?
-    getter errors : IO::Memory
+    getter errors = IO::Memory.new
 
     Log = ::Log.for("celestite".colorize(:light_green).to_s)
 
-    def initialize(@component_dir = nil, @routes_file = nil, @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
-      ENV["CELESTITE"] ||= "development"
+    def initialize(@config = Config.new)
       Log.info { "Renderer Initialized" }
-      @client = HTTP::Client.new("localhost", @port)
-      @errors = IO::Memory.new
+      # @client = HTTP::Client.new("localhost", @config.port)
+    end
+
+    class Generic
+      include Renderer
+    end
+
+    class Svelte
+      include Renderer
+
+      def initialize(@config : Config)
+        super
+        @process_command = String.build do |str|
+          common_args = String.build do |args|
+            args << "NODE_ENV=#{@config.env} "
+            args << "NODE_PORT=#{@config.port} " if @config.port
+            args << "VITE_PORT=#{@config.vite_port} " if @config.vite_port
+            args << "DEV_SECURE=#{@config.dev_secure} "
+            args << "ROOT_DIR=#{@config.root_dir} " if @config.root_dir
+            args << "COMPONENT_DIR=#{@config.component_dir} " if @config.component_dir
+            args << "LAYOUT_DIR=#{@config.layout_dir} " if @config.layout_dir
+            args << "BUILD_DIR=#{@config.build_dir} " if @config.build_dir
+            args << "DISABLE_A11Y_WARNINGS=#{@config.disable_a11y_warnings} "
+          end
+          str << "make -r " << @config.env << " "
+          str << common_args
+        end
+      end
     end
 
     ##
@@ -41,7 +58,7 @@ module Celestite
     ##
 
     def spawn_process
-      node_process = Process.new(@process_command, chdir: @engine.dir.to_s, shell: true, output: Process::Redirect::Pipe, error: Process::Redirect::Pipe)
+      node_process = Process.new(@process_command, chdir: @config.engine.dir.to_s, shell: true, output: Process::Redirect::Pipe, error: Process::Redirect::Pipe)
 
       spawn do
         while line = node_process.output.gets
@@ -69,9 +86,8 @@ module Celestite
     end
 
     def start_server
-      raise "Error - you must define component_dir to launch the node process" unless @component_dir
       Log.info { "Starting node server with command: #{@process_command}" }
-      node_process = self.spawn_process
+      node_process = spawn_process
       @node_process = node_process
       return node_process
     end
@@ -88,7 +104,7 @@ module Celestite
         end
         # No more children, so start killing from the bottom up
         Log.info { "Nuking child process #{pid}" }
-        Process.kill(Signal::TERM, pid.to_i)
+        Process.signal(Signal::TERM, pid.to_i)
       rescue ex
       end
     end
@@ -100,51 +116,29 @@ module Celestite
       end
     end
 
-    def render(path : String?, context : Celestite::Context? = nil, template : String? = @default_template)
-      Log.info { "Rendering #{path}" }
+    def render(component : String?, context : Celestite::Context? = nil, layout : String? = nil)
+      Log.info { "Rendering #{component}" }
       Log.info { "Context: #{context.to_json}" }
-      Log.info { "Template: #{template}" }
+      Log.info { "Layout: #{layout}" }
 
       path_with_query = String.build do |q|
-        q << path
-        q << "?template=#{template}" if template
+        q << "/#{component}"
+        q << "?layout=#{layout}" if layout
       end
 
-      method = (context || template) ? "POST" : "GET"
+      method = (context || layout) ? "POST" : "GET"
       headers = (method == "POST") ? HTTP::Headers{"content-type" => "application/json"} : nil
 
       Log.debug { "Calling node server:" }
       Log.debug { "Headers: #{headers}" }
       Log.debug { "#{method} #{path_with_query}" }
 
-      response = @client.exec(method: method, path: path_with_query, headers: headers, body: context.to_json)
+      # response = @client.exec(method: method, path: path_with_query, headers: headers, body: context.to_json)
+      response = HTTP::Client.exec(method: method, url: "http://localhost:#{@config.port}#{path_with_query}", headers: headers, body: context.to_json)
 
       Log.debug { "Response status: #{response.status}" }
 
       return response.body
-    end
-
-    class Generic
-      include Renderer
-    end
-
-    class Svelte
-      include Renderer
-
-      def initialize(@component_dir = nil, @routes_file = nil, @port = 4000, @template_dir = nil, @default_template = nil, @build_dir = nil, @build_dir_public_path = nil)
-        super
-        @engine = Celestite::Engine::Svelte
-        @process_command = String.build do |str|
-          common_args = String.build do |args|
-            args << "NODE_ENV=#{ENV["CELESTITE"]} "
-            args << "NODE_PORT=#{port} " if @port
-            args << "SAPPER_ROUTES=#{component_dir} " if @component_dir
-            args << "SAPPER_BUILD_DIR=#{build_dir} " if @build_dir
-          end
-          str << "make -r " << ENV["CELESTITE"] << " "
-          str << common_args
-        end
-      end
     end
   end
 end

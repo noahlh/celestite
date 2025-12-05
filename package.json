@@ -1,24 +1,19 @@
 {
   "name": "celestite",
-  "version": "0.1.3",
+  "version": "0.2.0",
+  "type": "module",
   "repository": "https://github.com/noahlh/celestite",
   "author": "Noah Lehmann-Haupt <nlh@nlh.me>",
   "license": "MIT",
+  "scripts": {
+    "build:client": "bunx --bun vite build --outDir dist/client",
+    "build:server": "bunx --bun vite build --outDir dist/server --ssr"
+  },
   "dependencies": {
-    "body-parser": "^1.19.0",
-    "polka": "next",
-    "uuid": "^8.3.1"
+    "svelte": "^5.0.0"
   },
   "devDependencies": {
-    "css-loader": "^3.6.0",
-    "file-loader": "^6.2.0",
-    "mini-css-extract-plugin": "^0.9.0",
-    "node-sass": "^4.13.1",
-    "pug": "^2.0.4",
-    "sapper": "github:noahlh/sapper#development",
-    "svelte": "^3.30.1",
-    "svelte-loader": "^2.9.0",
-    "svelte-preprocess": "^3.9.12",
-    "webpack": "^4.44.2"
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "vite": "^6.0.0"
   }
 }
