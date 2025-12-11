@@ -20,7 +20,21 @@ module Celestite
   def self.render(component : String?, context : Celestite::Context? = nil, layout : String? = nil)
     if renderer = @@renderer
       if proc = renderer.node_process
-        raise ProcessException.new("Error rendering - node process is dead", renderer.errors) if proc.terminated?
+        if proc.terminated?
+          Log.for("celestite").warn { "Node process died - attempting restart..." }
+          # Remove old process from tracking
+          @@node_processes.delete(proc)
+          # Start a new process
+          new_proc = renderer.start_server
+          @@node_processes << new_proc
+          # Wait briefly for the new process to be ready
+          sleep 2.seconds
+          # Check if new process is healthy
+          if new_proc.terminated?
+            raise ProcessException.new("Error rendering - node process failed to restart", renderer.errors)
+          end
+          Log.for("celestite").info { "Node process restarted successfully" }
+        end
         renderer.render(component, context, layout)
       end
     end

@@ -11,6 +11,7 @@ module Celestite
     getter config : Config
     getter node_process : Process?
     getter errors = IO::Memory.new
+    @process_command : String = ""
 
     Log = ::Log.for("celestite".colorize(:light_green).to_s)
 
