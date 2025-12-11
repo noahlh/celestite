@@ -58,12 +58,12 @@ function collectCssFromManifest(entryKey, collected = new Set()) {
 
   // Add CSS from this entry
   if (entry.css) {
-    entry.css.forEach(css => collected.add(css));
+    entry.css.forEach((css) => collected.add(css));
   }
 
   // Recursively collect from imports
   if (entry.imports) {
-    entry.imports.forEach(importKey => {
+    entry.imports.forEach((importKey) => {
       if (!collected.has(`visited:${importKey}`)) {
         collected.add(`visited:${importKey}`);
         collectCssFromManifest(importKey, collected);
@@ -72,7 +72,7 @@ function collectCssFromManifest(entryKey, collected = new Set()) {
   }
 
   // Filter out visited markers and return just CSS paths
-  return Array.from(collected).filter(item => !item.startsWith("visited:"));
+  return Array.from(collected).filter((item) => !item.startsWith("visited:"));
 }
 
 // Shared Vite plugin configuration
@@ -167,13 +167,13 @@ const layoutFiles = loadLayoutFiles(LAYOUT_DIR);
 
 // CSS collection with caching for performance
 // Caches are invalidated when Vite detects file changes via HMR
-const cssCache = new Map();      // filePath -> css string
-const importsCache = new Map();  // filePath -> array of import paths
+const cssCache = new Map(); // filePath -> css string
+const importsCache = new Map(); // filePath -> array of import paths
 
 // Clear caches when files change (Vite HMR)
 if (dev && vite) {
-  vite.watcher.on('change', (filePath) => {
-    if (filePath.endsWith('.svelte')) {
+  vite.watcher.on("change", (filePath) => {
+    if (filePath.endsWith(".svelte")) {
       cssCache.delete(filePath);
       importsCache.delete(filePath);
     }
@@ -193,7 +193,7 @@ async function collectComponentCss(componentPath) {
     try {
       const result = await vite.transformRequest(cssUrl);
       if (result?.code) {
-        let css = '';
+        let css = "";
         const viteMatch = result.code.match(/const __vite__css\s*=\s*"((?:[^"\\]|\\.)*)"/s);
         if (viteMatch) {
           css = viteMatch[1];
@@ -206,22 +206,24 @@ async function collectComponentCss(componentPath) {
         if (css) {
           // Unescape the CSS string
           css = css
-            .replace(/\\r/g, '')   // Remove carriage returns
-            .replace(/\\n/g, '\n')
-            .replace(/\\t/g, '\t')
+            .replace(/\\r/g, "") // Remove carriage returns
+            .replace(/\\n/g, "\n")
+            .replace(/\\t/g, "\t")
             .replace(/\\"/g, '"')
-            .replace(/\\\\/g, '\\');
+            .replace(/\\\\/g, "\\");
 
           // Validate this is actually CSS, not component source
           // Vite returns full component source for styleless components
           const trimmed = css.trim();
-          if (trimmed.startsWith('<') ||
-              trimmed.startsWith('<!--') ||
-              trimmed.includes('<script>') ||
-              trimmed.includes('<svg')) {
+          if (
+            trimmed.startsWith("<") ||
+            trimmed.startsWith("<!--") ||
+            trimmed.includes("<script>") ||
+            trimmed.includes("<svg")
+          ) {
             // This is component markup, not CSS - skip it
-            cssCache.set(svelteFilePath, '');
-            return '';
+            cssCache.set(svelteFilePath, "");
+            return "";
           }
 
           cssCache.set(svelteFilePath, css);
@@ -231,8 +233,8 @@ async function collectComponentCss(componentPath) {
     } catch (e) {
       // Component might not have styles
     }
-    cssCache.set(svelteFilePath, '');
-    return '';
+    cssCache.set(svelteFilePath, "");
+    return "";
   }
 
   function getImportsFromSource(filePath) {
@@ -242,16 +244,16 @@ async function collectComponentCss(componentPath) {
     }
 
     try {
-      const source = readFileSync(filePath, 'utf-8');
+      const source = readFileSync(filePath, "utf-8");
       const imports = [];
       const importRegex = /import\s+[\w\s{},*]+\s+from\s+["']([^"']+\.svelte)["']/g;
       let match;
       while ((match = importRegex.exec(source)) !== null) {
         const importPath = match[1];
-        const fileDir = resolve(filePath, '..');
-        if (importPath.startsWith('./') || importPath.startsWith('../')) {
+        const fileDir = resolve(filePath, "..");
+        if (importPath.startsWith("./") || importPath.startsWith("../")) {
           imports.push(resolve(fileDir, importPath));
-        } else if (importPath.startsWith('/')) {
+        } else if (importPath.startsWith("/")) {
           imports.push(join(COMPONENT_DIR, importPath));
         }
       }
@@ -265,11 +267,11 @@ async function collectComponentCss(componentPath) {
 
   // Collect all component paths first (synchronous, uses cached imports)
   function collectAllPaths(filePath) {
-    const normalizedPath = filePath.split('?')[0];
+    const normalizedPath = filePath.split("?")[0];
     if (visited.has(normalizedPath)) return;
     visited.add(normalizedPath);
 
-    if (normalizedPath.endsWith('.svelte')) {
+    if (normalizedPath.endsWith(".svelte")) {
       const imports = getImportsFromSource(normalizedPath);
       for (const importPath of imports) {
         collectAllPaths(importPath);
@@ -280,11 +282,9 @@ async function collectComponentCss(componentPath) {
   collectAllPaths(componentPath);
 
   // Fetch all CSS in parallel
-  const cssResults = await Promise.all(
-    Array.from(visited).map(path => getCssForComponent(path))
-  );
+  const cssResults = await Promise.all(Array.from(visited).map((path) => getCssForComponent(path)));
 
-  return cssResults.filter(css => css).join('\n');
+  return cssResults.filter((css) => css).join("\n");
 }
 
 // Find the svelte runtime entry in manifest
@@ -398,10 +398,7 @@ async function handleRender(req) {
     } else {
       // Production: load pre-built SSR module
       const ssrPath = join(BUILD_DIR, "server", pathname.replace(/\.svelte$/, ".js"));
-      const [componentModule, svelteModuleLoaded] = await Promise.all([
-        import(ssrPath),
-        import("svelte/server"),
-      ]);
+      const [componentModule, svelteModuleLoaded] = await Promise.all([import(ssrPath), import("svelte/server")]);
       component = componentModule.default;
       svelteModule = svelteModuleLoaded;
       render = svelteModule.render;
@@ -438,7 +435,7 @@ async function handleRender(req) {
         injectHead += `<style>${css}</style>`;
       }
     } catch (e) {
-      console.error('[vite-ssr] Failed to collect CSS:', e.message);
+      console.error("[vite-ssr] Failed to collect CSS:", e.message);
     }
   } else if (manifest) {
     // Production: inject CSS links from manifest
@@ -461,6 +458,33 @@ async function handleRender(req) {
   });
 }
 
+// Memory management: run GC during idle periods to prevent memory accumulation
+let idleGcTimer = null;
+const IDLE_GC_DELAY_MS = 5000; // Run GC after 5 seconds of no requests
+let requestsInFlight = 0;
+
+function scheduleIdleGc() {
+  // Clear any existing timer
+  if (idleGcTimer) {
+    clearTimeout(idleGcTimer);
+    idleGcTimer = null;
+  }
+
+  // Only schedule GC in production and when no requests are in flight
+  if (requestsInFlight > 0) return;
+
+  idleGcTimer = setTimeout(() => {
+    if (requestsInFlight === 0 && typeof Bun !== "undefined" && Bun.gc) {
+      const before = process.memoryUsage();
+      Bun.gc(true); // Synchronous full GC
+      const after = process.memoryUsage();
+      const freedMB = Math.round((before.heapUsed - after.heapUsed) / 1024 / 1024);
+      console.log(`[vite-ssr] Idle GC freed ${freedMB}MB (heap: ${Math.round(after.heapUsed / 1024 / 1024)}MB)`);
+    }
+    idleGcTimer = null;
+  }, IDLE_GC_DELAY_MS);
+}
+
 // Start Bun HTTP server
 const server = Bun.serve({
   port: parseInt(NODE_PORT, 10),
@@ -473,17 +497,27 @@ const server = Bun.serve({
       return new Response("OK", { status: 200 });
     }
 
+    // Track requests in flight
+    requestsInFlight++;
+
     // Handle render requests
     const response = await handleRender(req);
 
     const duration = (performance.now() - start).toFixed(2);
     console.log(`[vite-ssr] ${req.method} ${url.pathname} ${response.status} - ${duration}ms`);
 
+    // Decrement and schedule GC when idle
+    requestsInFlight--;
+    scheduleIdleGc();
+
     return response;
   },
 });
 
 console.log(`[vite-ssr] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${server.port}`);
+if (isProductionBuild) {
+  console.log(`[vite-ssr] Idle GC enabled: will run after ${IDLE_GC_DELAY_MS}ms of inactivity`);
+}
 
 // Also start Vite dev server for client HMR in development
 if (dev) {
