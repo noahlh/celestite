@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadConfigFromFile, mergeConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { readdirSync, statSync } from "fs";
 import { resolve, relative, dirname } from "path";
@@ -53,14 +53,30 @@ function createEntryPoints(componentDir, isSsrBuild) {
   return entries;
 }
 
-export default defineConfig(({ command, isSsrBuild }) => {
+export default defineConfig(async ({ command, isSsrBuild }) => {
   const isDev = command === "serve";
   const componentDir = process.env.COMPONENT_DIR;
   const buildDir = process.env.BUILD_DIR;
+  const viteConfigPath = process.env.VITE_CONFIG_PATH;
 
   const entries = componentDir ? createEntryPoints(componentDir, isSsrBuild) : {};
 
-  return {
+  // Load user's vite config if provided
+  let userConfig = null;
+  if (viteConfigPath) {
+    try {
+      const loaded = await loadConfigFromFile(
+        { mode: isDev ? "development" : "production" },
+        viteConfigPath
+      );
+      userConfig = loaded.config;
+      console.log(`[celestite] Loaded user vite config from: ${viteConfigPath}`);
+    } catch (e) {
+      console.error(`[celestite] Failed to load user vite config from ${viteConfigPath}:`, e.message);
+    }
+  }
+
+  const baseConfig = {
     root: componentDir || process.cwd(),
     plugins: [
       svelte({
@@ -126,4 +142,6 @@ export default defineConfig(({ command, isSsrBuild }) => {
       // to celestite's svelte package so renderer and components share the same ssr_context.
     },
   };
+
+  return userConfig ? mergeConfig(userConfig, baseConfig) : baseConfig;
 });
