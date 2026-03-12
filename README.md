@@ -193,6 +193,37 @@ Celestite supports running the Vite dev server over HTTPS, useful for tunneled c
    )
    ```
 
+Celestite reads `dev.key` and `dev.crt` from `ROOT_DIR` when `dev_secure` is enabled.
+
+For sandboxed or proxied development, "set" means exporting the variables in the
+parent app process environment before Celestite initializes.
+
+Use:
+
+```bash
+DEV_CLIENT_BASE=/_vite
+DEV_CLIENT_PROTOCOL=https
+```
+
+For example:
+
+```bash
+ENV=development DEV_CLIENT_BASE=/_vite DEV_CLIENT_PROTOCOL=https crystal run src/trader.cr
+```
+
+or, if your shell already has those variables exported:
+
+```bash
+./cmon trader
+```
+
+`DEV_CLIENT_BASE=/_vite` tells Celestite to load Vite modules from the same public
+origin under `/_vite/...` instead of from a separate `:5173` origin. In authenticated
+previews, that keeps module loads and HMR on the authenticated origin.
+
+`DEV_CLIENT_PROTOCOL=https` is the correct companion setting when the public app URL
+is HTTPS.
+
 ## Production Builds
 
 For production, Svelte components must be pre-built using Vite.
@@ -245,6 +276,8 @@ NODE_ENV=production NODE_PORT=4000 \
 | `port`                  | `4000`   | Bun SSR server port                      |
 | `vite_port`             | `5173`   | Vite dev server port (development only)  |
 | `dev_secure`            | `false`  | Enable HTTPS for dev server              |
+| `dev_client_protocol`   | -        | Override the browser-facing dev protocol |
+| `dev_client_base`       | -        | Prefix browser-facing dev assets         |
 | `disable_a11y_warnings` | `false`  | Suppress Svelte accessibility warnings   |
 
 ## Roadmap

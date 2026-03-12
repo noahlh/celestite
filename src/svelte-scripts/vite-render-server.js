@@ -1,5 +1,6 @@
-import { readdirSync, statSync, readFileSync, existsSync } from "fs";
+import { readdirSync, statSync, readFileSync, existsSync, writeFileSync } from "fs";
 import { resolve, parse, join } from "path";
+import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
@@ -12,6 +13,9 @@ const {
   NODE_PORT = "4000",
   VITE_PORT = "5173",
   DEV_SECURE = "false",
+  DEV_CLIENT_PROTOCOL,
+  DEV_CLIENT_BASE,
+  ROOT_DIR,
   COMPONENT_DIR,
   LAYOUT_DIR,
   BUILD_DIR,
@@ -19,11 +23,20 @@ const {
 } = process.env;
 
 const disableA11yWarnings = DISABLE_A11Y_WARNINGS === "true";
+const bundledSvelteRoot = fileURLToPath(new URL("../../node_modules/svelte", import.meta.url));
+const rootDir = ROOT_DIR || process.cwd();
+const appSvelteRoot = resolve(rootDir, "node_modules", "svelte");
+const runtimeSvelteRoot = existsSync(join(appSvelteRoot, "package.json"))
+  ? appSvelteRoot
+  : bundledSvelteRoot;
+const svelteInternalClientCompatPath = join(runtimeSvelteRoot, "src/internal/client/celestite-compat.js");
 
 // Development modes use Vite dev server; staging/production use pre-built assets
 const dev = NODE_ENV === "development" || NODE_ENV === "development_secure";
 const devSecure = NODE_ENV === "development_secure" || DEV_SECURE === "true";
 const devProtocol = devSecure ? "https" : "http";
+const devClientProtocol = DEV_CLIENT_PROTOCOL || devProtocol;
+const devClientBase = DEV_CLIENT_BASE ? normalizeDevClientBase(DEV_CLIENT_BASE) : null;
 // Staging mode uses production builds but with dev env vars loaded by Crystal
 const isProductionBuild = !dev; // staging and production both use pre-built assets
 
@@ -94,6 +107,36 @@ function getSveltePlugin() {
   return svelte(options);
 }
 
+function ensureSvelteCompatFile() {
+  const compatSource = `export * from "./index.js";
+export { delegate as delegated } from "./index.js";
+`;
+
+  if (!existsSync(svelteInternalClientCompatPath) || readFileSync(svelteInternalClientCompatPath, "utf-8") !== compatSource) {
+    writeFileSync(svelteInternalClientCompatPath, compatSource);
+  }
+}
+
+function getSvelteResolveConfig(target = "client") {
+  ensureSvelteCompatFile();
+
+  const entrypoint = target === "server" ? "index-server.js" : "index-client.js";
+  const legacyEntrypoint = target === "server" ? "legacy-server.js" : "legacy-client.js";
+
+  return {
+    alias: [
+      { find: /^svelte$/, replacement: join(runtimeSvelteRoot, `src/${entrypoint}`) },
+      { find: /^svelte\/internal\/client$/, replacement: svelteInternalClientCompatPath },
+      { find: /^svelte\/internal\/client\/index\.js$/, replacement: svelteInternalClientCompatPath },
+      { find: /^svelte\/store$/, replacement: join(runtimeSvelteRoot, `src/store/${entrypoint}`) },
+      { find: /^svelte\/reactivity$/, replacement: join(runtimeSvelteRoot, `src/reactivity/${entrypoint}`) },
+      { find: /^svelte\/legacy$/, replacement: join(runtimeSvelteRoot, `src/legacy/${legacyEntrypoint}`) },
+      { find: /^svelte\/(.+)$/, replacement: `${join(runtimeSvelteRoot, "src")}/$1` },
+    ],
+    dedupe: ["svelte"],
+  };
+}
+
 // Load layout files into memory
 function loadLayoutFiles(dir) {
   if (!dir) return [];
@@ -143,6 +186,35 @@ function parseUrl(reqURL) {
   return { pathname, layoutRequested };
 }
 
+function normalizeDevClientBase(base) {
+  const trimmed = base.trim();
+  if (!trimmed || trimmed === "/") return "/";
+  const withoutSlashes = trimmed.replace(/^\/+|\/+$/g, "");
+  return `/${withoutSlashes}/`;
+}
+
+function getDevHttpsConfig() {
+  if (!devSecure) return false;
+
+  const rootDir = ROOT_DIR || process.cwd();
+  const keyPath = resolve(rootDir, "dev.key");
+  const certPath = resolve(rootDir, "dev.crt");
+
+  if (!existsSync(keyPath) || !existsSync(certPath)) {
+    throw new Error(
+      `[vite-ssr] Secure development requires ${keyPath} and ${certPath}`,
+    );
+  }
+
+  return {
+    key: readFileSync(keyPath),
+    cert: readFileSync(certPath),
+    allowHTTP1: true,
+  };
+}
+
+const devHttpsConfig = getDevHttpsConfig();
+
 // Initialize Vite server for development SSR
 let vite = null;
 if (dev) {
@@ -151,9 +223,7 @@ if (dev) {
     plugins: [getSveltePlugin()],
     server: { middlewareMode: true },
     appType: "custom",
-    resolve: {
-      dedupe: ["svelte"],
-    },
+    resolve: getSvelteResolveConfig("server"),
     optimizeDeps: {
       exclude: ["svelte"],
     },
@@ -303,10 +373,14 @@ function findSvelteEntry() {
 // Generate client-side hydration script
 function generateClientScript(pathname, context, isDev, manifestEntry) {
   if (isDev) {
+    const viteBaseExpression = devClientBase && devClientBase !== "/"
+      ? `window.location.origin + '${devClientBase.slice(0, -1)}'`
+      : `'${devClientProtocol}://' + window.location.hostname + ':${VITE_PORT}'`;
+
     return `
       <script type="module">
         // HMR setup - dynamic import for runtime URL construction
-        const viteBase = '${devProtocol}://' + window.location.hostname + ':${VITE_PORT}';
+        const viteBase = ${viteBaseExpression};
         await import(viteBase + '/@vite/client');
 
         // Load svelte and component through Vite dev server
@@ -524,17 +598,18 @@ if (dev) {
   // Start Vite's HTTP server for serving client assets with HMR
   const viteClientServer = await createViteServer({
     root: COMPONENT_DIR,
+    base: devClientBase || "/",
     plugins: [getSveltePlugin()],
-    resolve: {
-      dedupe: ["svelte"],
-    },
+    resolve: getSvelteResolveConfig("client"),
     optimizeDeps: {
       exclude: ["svelte"],
     },
     server: {
+      host: "0.0.0.0",
       port: parseInt(VITE_PORT, 10),
       strictPort: true,
-      https: devSecure,
+      allowedHosts: true,
+      https: devHttpsConfig,
       cors: true, // Allow cross-origin requests from the main app
     },
   });
