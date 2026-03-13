@@ -10,7 +10,7 @@
     "build:server": "bunx --bun vite build --outDir dist/server --ssr"
   },
   "dependencies": {
-    "svelte": "^5.0.0"
+    "svelte": "5.53.11"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
