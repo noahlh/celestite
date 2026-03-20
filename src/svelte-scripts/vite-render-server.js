@@ -109,7 +109,6 @@ function getSveltePlugin() {
 
 function ensureSvelteCompatFile() {
   const compatSource = `export * from "./index.js";
-export { delegate as delegated } from "./index.js";
 `;
 
   if (!existsSync(svelteInternalClientCompatPath) || readFileSync(svelteInternalClientCompatPath, "utf-8") !== compatSource) {
