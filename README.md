@@ -186,6 +186,7 @@ Celestite supports running the Vite dev server over HTTPS, useful for tunneled c
    ```
 
 4. Enable in configuration:
+
    ```crystal
    Celestite.initialize(
      dev_secure: true,
@@ -267,18 +268,21 @@ NODE_ENV=production NODE_PORT=4000 \
 
 ## Configuration Options
 
-| Option                  | Default  | Description                              |
-| ----------------------- | -------- | ---------------------------------------- |
-| `engine`                | `Svelte` | Rendering engine (currently only Svelte) |
-| `component_dir`         | -        | Path to your Svelte components           |
-| `layout_dir`            | -        | Path to HTML layout templates            |
-| `build_dir`             | -        | Output directory for production builds   |
-| `port`                  | `4000`   | Bun SSR server port                      |
-| `vite_port`             | `5173`   | Vite dev server port (development only)  |
-| `dev_secure`            | `false`  | Enable HTTPS for dev server              |
-| `dev_client_protocol`   | -        | Override the browser-facing dev protocol |
-| `dev_client_base`       | -        | Prefix browser-facing dev assets         |
-| `disable_a11y_warnings` | `false`  | Suppress Svelte accessibility warnings   |
+| Option                  | Default  | Description                                            |
+| ----------------------- | -------- | ------------------------------------------------------ |
+| `engine`                | `Svelte` | Rendering engine (currently only Svelte)               |
+| `component_dir`         | -        | Path to your Svelte components                         |
+| `layout_dir`            | -        | Path to HTML layout templates                          |
+| `build_dir`             | -        | Output directory for production builds                 |
+| `port`                  | `4000`   | Bun SSR server port                                    |
+| `vite_port`             | `5173`   | Vite dev server port (development only)                |
+| `dev_secure`            | `false`  | Enable HTTPS for dev server                            |
+| `dev_client_protocol`   | -        | Override the browser-facing dev protocol               |
+| `dev_client_base`       | -        | Prefix browser-facing dev assets                       |
+| `disable_a11y_warnings` | `false`  | Suppress Svelte accessibility warnings                 |
+| `vite_config_path`      | -        | Path to custom Vite config file (relative to app root) |
+
+**Note**: Celestite always provides its own Svelte plugin with SSR-specific settings. User-provided Svelte plugins are automatically removed during config merging.
 
 ## Roadmap
 

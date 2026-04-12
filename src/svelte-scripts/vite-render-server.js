@@ -1,8 +1,15 @@
-import { readdirSync, statSync, readFileSync, existsSync, writeFileSync } from "fs";
+import {
+  readdirSync,
+  statSync,
+  readFileSync,
+  existsSync,
+  writeFileSync,
+} from "fs";
 import { resolve, parse, join } from "path";
 import { fileURLToPath } from "url";
-import { createServer as createViteServer } from "vite";
+import { createServer as createViteServer, mergeConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { loadUserViteConfig } from "./load-user-config.js";
 
 // Note: SSR bundles use absolute paths to celestite's svelte (configured in vite.config.js)
 // This ensures renderer and SSR components share the same svelte instance for ssr_context
@@ -23,20 +30,27 @@ const {
 } = process.env;
 
 const disableA11yWarnings = DISABLE_A11Y_WARNINGS === "true";
-const bundledSvelteRoot = fileURLToPath(new URL("../../node_modules/svelte", import.meta.url));
+const bundledSvelteRoot = fileURLToPath(
+  new URL("../../node_modules/svelte", import.meta.url),
+);
 const rootDir = ROOT_DIR || process.cwd();
 const appSvelteRoot = resolve(rootDir, "node_modules", "svelte");
 const runtimeSvelteRoot = existsSync(join(appSvelteRoot, "package.json"))
   ? appSvelteRoot
   : bundledSvelteRoot;
-const svelteInternalClientCompatPath = join(runtimeSvelteRoot, "src/internal/client/celestite-compat.js");
+const svelteInternalClientCompatPath = join(
+  runtimeSvelteRoot,
+  "src/internal/client/celestite-compat.js",
+);
 
 // Development modes use Vite dev server; staging/production use pre-built assets
 const dev = NODE_ENV === "development" || NODE_ENV === "development_secure";
 const devSecure = NODE_ENV === "development_secure" || DEV_SECURE === "true";
 const devProtocol = devSecure ? "https" : "http";
 const devClientProtocol = DEV_CLIENT_PROTOCOL || devProtocol;
-const devClientBase = DEV_CLIENT_BASE ? normalizeDevClientBase(DEV_CLIENT_BASE) : null;
+const devClientBase = DEV_CLIENT_BASE
+  ? normalizeDevClientBase(DEV_CLIENT_BASE)
+  : null;
 // Staging mode uses production builds but with dev env vars loaded by Crystal
 const isProductionBuild = !dev; // staging and production both use pre-built assets
 
@@ -47,12 +61,16 @@ if (!dev && BUILD_DIR) {
   if (existsSync(manifestPath)) {
     try {
       manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
-      console.log(`[vite-ssr] Loaded production manifest with ${Object.keys(manifest).length} entries`);
+      console.log(
+        `[vite-ssr] Loaded production manifest with ${Object.keys(manifest).length} entries`,
+      );
     } catch (e) {
       console.error(`[vite-ssr] Failed to load manifest: ${e.message}`);
     }
   } else {
-    console.warn(`[vite-ssr] No manifest found at ${manifestPath} - run build first`);
+    console.warn(
+      `[vite-ssr] No manifest found at ${manifestPath} - run build first`,
+    );
   }
 }
 
@@ -111,7 +129,10 @@ function ensureSvelteCompatFile() {
   const compatSource = `export * from "./index.js";
 `;
 
-  if (!existsSync(svelteInternalClientCompatPath) || readFileSync(svelteInternalClientCompatPath, "utf-8") !== compatSource) {
+  if (
+    !existsSync(svelteInternalClientCompatPath) ||
+    readFileSync(svelteInternalClientCompatPath, "utf-8") !== compatSource
+  ) {
     writeFileSync(svelteInternalClientCompatPath, compatSource);
   }
 }
@@ -119,18 +140,41 @@ function ensureSvelteCompatFile() {
 function getSvelteResolveConfig(target = "client") {
   ensureSvelteCompatFile();
 
-  const entrypoint = target === "server" ? "index-server.js" : "index-client.js";
-  const legacyEntrypoint = target === "server" ? "legacy-server.js" : "legacy-client.js";
+  const entrypoint =
+    target === "server" ? "index-server.js" : "index-client.js";
+  const legacyEntrypoint =
+    target === "server" ? "legacy-server.js" : "legacy-client.js";
 
   return {
     alias: [
-      { find: /^svelte$/, replacement: join(runtimeSvelteRoot, `src/${entrypoint}`) },
-      { find: /^svelte\/internal\/client$/, replacement: svelteInternalClientCompatPath },
-      { find: /^svelte\/internal\/client\/index\.js$/, replacement: svelteInternalClientCompatPath },
-      { find: /^svelte\/store$/, replacement: join(runtimeSvelteRoot, `src/store/${entrypoint}`) },
-      { find: /^svelte\/reactivity$/, replacement: join(runtimeSvelteRoot, `src/reactivity/${entrypoint}`) },
-      { find: /^svelte\/legacy$/, replacement: join(runtimeSvelteRoot, `src/legacy/${legacyEntrypoint}`) },
-      { find: /^svelte\/(.+)$/, replacement: `${join(runtimeSvelteRoot, "src")}/$1` },
+      {
+        find: /^svelte$/,
+        replacement: join(runtimeSvelteRoot, `src/${entrypoint}`),
+      },
+      {
+        find: /^svelte\/internal\/client$/,
+        replacement: svelteInternalClientCompatPath,
+      },
+      {
+        find: /^svelte\/internal\/client\/index\.js$/,
+        replacement: svelteInternalClientCompatPath,
+      },
+      {
+        find: /^svelte\/store$/,
+        replacement: join(runtimeSvelteRoot, `src/store/${entrypoint}`),
+      },
+      {
+        find: /^svelte\/reactivity$/,
+        replacement: join(runtimeSvelteRoot, `src/reactivity/${entrypoint}`),
+      },
+      {
+        find: /^svelte\/legacy$/,
+        replacement: join(runtimeSvelteRoot, `src/legacy/${legacyEntrypoint}`),
+      },
+      {
+        find: /^svelte\/(.+)$/,
+        replacement: `${join(runtimeSvelteRoot, "src")}/$1`,
+      },
     ],
     dedupe: ["svelte"],
   };
@@ -214,10 +258,14 @@ function getDevHttpsConfig() {
 
 const devHttpsConfig = getDevHttpsConfig();
 
+const mode = dev ? "development" : "production";
+
 // Initialize Vite server for development SSR
 let vite = null;
 if (dev) {
-  vite = await createViteServer({
+  const userConfig = await loadUserViteConfig({ mode, command: "serve", isSsrBuild: true });
+
+  const baseConfig = {
     root: COMPONENT_DIR,
     plugins: [getSveltePlugin()],
     server: { middlewareMode: true },
@@ -229,7 +277,12 @@ if (dev) {
     ssr: {
       noExternal: ["svelte"],
     },
-  });
+  };
+
+  const finalConfig = userConfig
+    ? mergeConfig(userConfig, baseConfig)
+    : baseConfig;
+  vite = await createViteServer(finalConfig);
 }
 
 const layoutFiles = loadLayoutFiles(LAYOUT_DIR);
@@ -263,11 +316,15 @@ async function collectComponentCss(componentPath) {
       const result = await vite.transformRequest(cssUrl);
       if (result?.code) {
         let css = "";
-        const viteMatch = result.code.match(/const __vite__css\s*=\s*"((?:[^"\\]|\\.)*)"/s);
+        const viteMatch = result.code.match(
+          /const __vite__css\s*=\s*"((?:[^"\\]|\\.)*)"/s,
+        );
         if (viteMatch) {
           css = viteMatch[1];
         } else {
-          const exportMatch = result.code.match(/export default\s*"((?:[^"\\]|\\.)*)"/s);
+          const exportMatch = result.code.match(
+            /export default\s*"((?:[^"\\]|\\.)*)"/s,
+          );
           if (exportMatch) {
             css = exportMatch[1];
           }
@@ -315,7 +372,8 @@ async function collectComponentCss(componentPath) {
     try {
       const source = readFileSync(filePath, "utf-8");
       const imports = [];
-      const importRegex = /import\s+[\w\s{},*]+\s+from\s+["']([^"']+\.svelte)["']/g;
+      const importRegex =
+        /import\s+[\w\s{},*]+\s+from\s+["']([^"']+\.svelte)["']/g;
       let match;
       while ((match = importRegex.exec(source)) !== null) {
         const importPath = match[1];
@@ -351,7 +409,9 @@ async function collectComponentCss(componentPath) {
   collectAllPaths(componentPath);
 
   // Fetch all CSS in parallel
-  const cssResults = await Promise.all(Array.from(visited).map((path) => getCssForComponent(path)));
+  const cssResults = await Promise.all(
+    Array.from(visited).map((path) => getCssForComponent(path)),
+  );
 
   return cssResults.filter((css) => css).join("\n");
 }
@@ -372,9 +432,10 @@ function findSvelteEntry() {
 // Generate client-side hydration script
 function generateClientScript(pathname, context, isDev, manifestEntry) {
   if (isDev) {
-    const viteBaseExpression = devClientBase && devClientBase !== "/"
-      ? `window.location.origin + '${devClientBase.slice(0, -1)}'`
-      : `'${devClientProtocol}://' + window.location.hostname + ':${VITE_PORT}'`;
+    const viteBaseExpression =
+      devClientBase && devClientBase !== "/"
+        ? `window.location.origin + '${devClientBase.slice(0, -1)}'`
+        : `'${devClientProtocol}://' + window.location.hostname + ':${VITE_PORT}'`;
 
     return `
       <script type="module">
@@ -397,11 +458,15 @@ function generateClientScript(pathname, context, isDev, manifestEntry) {
     `;
   } else {
     // Production: load from bundled assets using manifest
-    const jsFile = manifestEntry?.file || pathname.replace(/^\//, "").replace(/\.svelte$/, ".js");
+    const jsFile =
+      manifestEntry?.file ||
+      pathname.replace(/^\//, "").replace(/\.svelte$/, ".js");
     const svelteFile = findSvelteEntry();
 
     if (!svelteFile) {
-      console.error("[vite-ssr] No __svelte entry in manifest - client hydration will fail");
+      console.error(
+        "[vite-ssr] No __svelte entry in manifest - client hydration will fail",
+      );
     }
 
     // Assets built to BUILD_DIR/client/ are served at /client/ by Kemal
@@ -424,7 +489,8 @@ function generateClientScript(pathname, context, isDev, manifestEntry) {
 // Normalize component path
 function normalizeComponentPath(pathname) {
   // Handle root path
-  let normalized = pathname === "/" || pathname === "" ? "/index.svelte" : pathname;
+  let normalized =
+    pathname === "/" || pathname === "" ? "/index.svelte" : pathname;
   // Add .svelte extension if missing
   if (!normalized.endsWith(".svelte")) {
     normalized += ".svelte";
@@ -439,7 +505,9 @@ async function handleRender(req) {
   const layout = getLayout(layoutRequested, layoutFiles);
 
   if (!layout) {
-    return new Response(`Layout "${layoutRequested}" not found`, { status: 404 });
+    return new Response(`Layout "${layoutRequested}" not found`, {
+      status: 404,
+    });
   }
 
   // Get context from request body (POST) or empty object (GET)
@@ -470,16 +538,28 @@ async function handleRender(req) {
       render = svelteModule.render;
     } else {
       // Production: load pre-built SSR module
-      const ssrPath = join(BUILD_DIR, "server", pathname.replace(/\.svelte$/, ".js"));
-      const [componentModule, svelteModuleLoaded] = await Promise.all([import(ssrPath), import("svelte/server")]);
+      const ssrPath = join(
+        BUILD_DIR,
+        "server",
+        pathname.replace(/\.svelte$/, ".js"),
+      );
+      const [componentModule, svelteModuleLoaded] = await Promise.all([
+        import(ssrPath),
+        import("svelte/server"),
+      ]);
       component = componentModule.default;
       svelteModule = svelteModuleLoaded;
       render = svelteModule.render;
     }
   } catch (error) {
-    console.error(`[vite-ssr] Failed to load component ${pathname}:`, error.message);
+    console.error(
+      `[vite-ssr] Failed to load component ${pathname}:`,
+      error.message,
+    );
     console.error(error.stack);
-    return new Response(`Component load error: ${error.message}`, { status: 500 });
+    return new Response(`Component load error: ${error.message}`, {
+      status: 500,
+    });
   }
 
   // Render the component using Svelte 5's render() function
@@ -519,7 +599,12 @@ async function handleRender(req) {
     }
   }
 
-  const clientScript = generateClientScript(pathname, context, dev, manifestEntry);
+  const clientScript = generateClientScript(
+    pathname,
+    context,
+    dev,
+    manifestEntry,
+  );
 
   const html = layout
     .replace("<!-- CELESTITE HEAD -->", injectHead)
@@ -551,8 +636,12 @@ function scheduleIdleGc() {
       const before = process.memoryUsage();
       Bun.gc(true); // Synchronous full GC
       const after = process.memoryUsage();
-      const freedMB = Math.round((before.heapUsed - after.heapUsed) / 1024 / 1024);
-      console.log(`[vite-ssr] Idle GC freed ${freedMB}MB (heap: ${Math.round(after.heapUsed / 1024 / 1024)}MB)`);
+      const freedMB = Math.round(
+        (before.heapUsed - after.heapUsed) / 1024 / 1024,
+      );
+      console.log(
+        `[vite-ssr] Idle GC freed ${freedMB}MB (heap: ${Math.round(after.heapUsed / 1024 / 1024)}MB)`,
+      );
     }
     idleGcTimer = null;
   }, IDLE_GC_DELAY_MS);
@@ -577,7 +666,9 @@ const server = Bun.serve({
     const response = await handleRender(req);
 
     const duration = (performance.now() - start).toFixed(2);
-    console.log(`[vite-ssr] ${req.method} ${url.pathname} ${response.status} - ${duration}ms`);
+    console.log(
+      `[vite-ssr] ${req.method} ${url.pathname} ${response.status} - ${duration}ms`,
+    );
 
     // Decrement and schedule GC when idle
     requestsInFlight--;
@@ -587,15 +678,20 @@ const server = Bun.serve({
   },
 });
 
-console.log(`[vite-ssr] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${server.port}`);
+console.log(
+  `[vite-ssr] Svelte SSR renderer listening in ${NODE_ENV} mode on port ${server.port}`,
+);
 if (isProductionBuild) {
-  console.log(`[vite-ssr] Idle GC enabled: will run after ${IDLE_GC_DELAY_MS}ms of inactivity`);
+  console.log(
+    `[vite-ssr] Idle GC enabled: will run after ${IDLE_GC_DELAY_MS}ms of inactivity`,
+  );
 }
 
 // Also start Vite dev server for client HMR in development
 if (dev) {
-  // Start Vite's HTTP server for serving client assets with HMR
-  const viteClientServer = await createViteServer({
+  const userConfig = await loadUserViteConfig({ mode, command: "serve", isSsrBuild: false });
+
+  const clientBaseConfig = {
     root: COMPONENT_DIR,
     base: devClientBase || "/",
     plugins: [getSveltePlugin()],
@@ -611,7 +707,15 @@ if (dev) {
       https: devHttpsConfig,
       cors: true, // Allow cross-origin requests from the main app
     },
-  });
+  };
+
+  const clientFinalConfig = userConfig
+    ? mergeConfig(userConfig, clientBaseConfig)
+    : clientBaseConfig;
+  // Start Vite's HTTP server for serving client assets with HMR
+  const viteClientServer = await createViteServer(clientFinalConfig);
   await viteClientServer.listen();
-  console.log(`[vite-ssr] Vite dev server running on ${devProtocol}://localhost:${VITE_PORT}`);
+  console.log(
+    `[vite-ssr] Vite dev server running on ${devProtocol}://localhost:${VITE_PORT}`,
+  );
 }
