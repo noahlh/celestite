@@ -7,12 +7,9 @@ import {
 } from "fs";
 import { resolve, parse, join } from "path";
 import { fileURLToPath } from "url";
-import {
-  createServer as createViteServer,
-  loadConfigFromFile,
-  mergeConfig,
-} from "vite";
+import { createServer as createViteServer, mergeConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { loadUserViteConfig } from "./load-user-config.js";
 
 // Note: SSR bundles use absolute paths to celestite's svelte (configured in vite.config.js)
 // This ensures renderer and SSR components share the same svelte instance for ssr_context
@@ -261,31 +258,12 @@ function getDevHttpsConfig() {
 
 const devHttpsConfig = getDevHttpsConfig();
 
-// Load user's vite.config.js if VITE_CONFIG_PATH is provided
-async function loadUserViteConfig() {
-  const viteConfigPath = process.env.VITE_CONFIG_PATH;
-  if (!viteConfigPath) return null;
-
-  try {
-    const userConfig = await loadConfigFromFile(
-      { mode: dev ? "development" : "production" },
-      viteConfigPath,
-    );
-    console.log(`[vite-ssr] Loaded user vite config from: ${viteConfigPath}`);
-    return userConfig.config;
-  } catch (e) {
-    console.error(
-      `[vite-ssr] Failed to load user vite config from ${viteConfigPath}:`,
-      e.message,
-    );
-    return null;
-  }
-}
+const mode = dev ? "development" : "production";
 
 // Initialize Vite server for development SSR
 let vite = null;
 if (dev) {
-  const userConfig = await loadUserViteConfig();
+  const userConfig = await loadUserViteConfig({ mode, command: "serve", isSsrBuild: true });
 
   const baseConfig = {
     root: COMPONENT_DIR,
@@ -711,7 +689,7 @@ if (isProductionBuild) {
 
 // Also start Vite dev server for client HMR in development
 if (dev) {
-  const userConfig = await loadUserViteConfig();
+  const userConfig = await loadUserViteConfig({ mode, command: "serve", isSsrBuild: false });
 
   const clientBaseConfig = {
     root: COMPONENT_DIR,

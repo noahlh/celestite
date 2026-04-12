@@ -1,8 +1,9 @@
-import { defineConfig, loadConfigFromFile, mergeConfig } from "vite";
+import { defineConfig, mergeConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { readdirSync, statSync } from "fs";
 import { resolve, relative, dirname } from "path";
 import { fileURLToPath } from "url";
+import { loadUserViteConfig } from "./src/svelte-scripts/load-user-config.js";
 
 // Get celestite's root directory (where vite.config.js is located)
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -57,24 +58,15 @@ export default defineConfig(async ({ command, isSsrBuild }) => {
   const isDev = command === "serve";
   const componentDir = process.env.COMPONENT_DIR;
   const buildDir = process.env.BUILD_DIR;
-  const viteConfigPath = process.env.VITE_CONFIG_PATH;
 
   const entries = componentDir ? createEntryPoints(componentDir, isSsrBuild) : {};
 
-  // Load user's vite config if provided
-  let userConfig = null;
-  if (viteConfigPath) {
-    try {
-      const loaded = await loadConfigFromFile(
-        { mode: isDev ? "development" : "production" },
-        viteConfigPath
-      );
-      userConfig = loaded.config;
-      console.log(`[celestite] Loaded user vite config from: ${viteConfigPath}`);
-    } catch (e) {
-      console.error(`[celestite] Failed to load user vite config from ${viteConfigPath}:`, e.message);
-    }
-  }
+  // Load user's vite config via shared module
+  const userConfig = await loadUserViteConfig({
+    mode: isDev ? "development" : "production",
+    command,
+    isSsrBuild
+  });
 
   const baseConfig = {
     root: componentDir || process.cwd(),
